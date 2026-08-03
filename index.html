@@ -1,0 +1,3666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="An interactive Gaussian elimination trainer with guided, practice, and free row-reduction modes." />
+  <meta name="author" content="Sebastian Bozlee, Wake Forest University" />
+  <title>Gaussian Elimination Trainer</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #182033;
+      --muted: #65708a;
+      --line: #d9deea;
+      --accent: #315efb;
+      --accent-soft: #e8eeff;
+      --selected: #fff2b8;
+      --selected-border: #cf9f00;
+      --danger: #b42318;
+      --guide: #0f766e;
+      --guide-soft: #ccfbf1;
+      --guide-muted: #eef2f6;
+      --practice: #9a3412;
+      --practice-soft: #fff7ed;
+      --practice-good: #166534;
+      --practice-warn: #92400e;
+      --shadow: 0 10px 30px rgba(28, 39, 67, 0.08);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+
+    .app {
+      width: min(1180px, calc(100% - 28px));
+      margin: 18px auto 28px;
+    }
+
+    header {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.55rem, 3vw, 2.25rem);
+      letter-spacing: -0.035em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      max-width: 780px;
+      line-height: 1.45;
+    }
+
+    .mode-switch {
+      display: inline-flex;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px;
+      box-shadow: var(--shadow);
+      white-space: nowrap;
+    }
+
+    .mode-pill {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .mode-pill.active,
+    .mode-pill.active:hover:not(:disabled),
+    .mode-pill.active:active:not(:disabled),
+    .mode-pill.active:focus {
+      color: white;
+      background: var(--accent);
+      font-weight: 700;
+    }
+
+    .mode-pill:focus:not(:focus-visible) { outline: none; }
+    .mode-pill:focus-visible { outline: 3px solid rgba(49, 94, 251, 0.32); outline-offset: 2px; }
+    .mode-pill:disabled { opacity: 0.55; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .setup-panel {
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .app-credit {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.4;
+    }
+
+    .setup-toolbar,
+    .operation-toolbar,
+    .export-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .setup-toolbar { margin-bottom: 14px; }
+
+    label.compact {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    select,
+    .factor-input,
+    .matrix-entry {
+      border: 1px solid #bfc7d8;
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+    }
+
+    select { padding: 7px 9px; }
+
+    button {
+      border: 1px solid #bfc7d8;
+      border-radius: 9px;
+      padding: 8px 11px;
+      background: white;
+      color: var(--ink);
+      cursor: pointer;
+      transition: transform 90ms ease, border-color 120ms ease, background 120ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: #8794af;
+      background: #f8f9fc;
+    }
+
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: 0.42; cursor: not-allowed; }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+
+    button.primary:hover:not(:disabled) {
+      background: #244fe3;
+      border-color: #244fe3;
+    }
+
+    button.operation.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #173aaf;
+      font-weight: 750;
+    }
+
+    .entry-wrap {
+      overflow: auto;
+      padding: 5px 3px 2px;
+    }
+
+    .entry-matrix {
+      display: grid;
+      gap: 7px;
+      width: max-content;
+      margin: 0 auto;
+      position: relative;
+      padding: 8px 18px;
+    }
+
+    .entry-matrix::before,
+    .entry-matrix::after,
+    .matrix-bracket::before,
+    .matrix-bracket::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 9px;
+      border-top: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+    }
+
+    .entry-matrix::before,
+    .matrix-bracket::before {
+      left: 0;
+      border-left: 2px solid currentColor;
+    }
+
+    .entry-matrix::after,
+    .matrix-bracket::after {
+      right: 0;
+      border-right: 2px solid currentColor;
+    }
+
+    .matrix-entry {
+      width: 72px;
+      padding: 7px 7px;
+      text-align: center;
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+      font-size: 1rem;
+    }
+
+    .matrix-entry.invalid {
+      border-color: var(--danger);
+      background: #fff2f0;
+      outline: 2px solid rgba(180, 35, 24, 0.12);
+    }
+
+    .work-panel { overflow: hidden; overflow-anchor: none; }
+
+    .work-header {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .work-heading {
+      font-weight: 800;
+      letter-spacing: -0.015em;
+    }
+
+    .history-scroll {
+      max-height: 58vh;
+      min-height: 240px;
+      overflow: auto;
+      padding: 16px 18px 22px;
+      scroll-behavior: smooth;
+    }
+
+    .history-empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 70px 20px;
+    }
+
+    .step-line {
+      min-width: max-content;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin: 0 auto 17px;
+      padding: 3px 8px;
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+    }
+
+    .relation,
+    .relation-balance {
+      width: 190px;
+      flex: 0 0 190px;
+      align-self: center;
+    }
+
+    .relation { text-align: center; }
+
+    .op-label {
+      min-height: 22px;
+      font-size: 0.94rem;
+      line-height: 1.2;
+      color: #333d58;
+      margin-bottom: -2px;
+    }
+
+    .tilde {
+      font-size: 2.05rem;
+      line-height: 1;
+    }
+
+    .matrix-bracket {
+      position: relative;
+      display: inline-block;
+      padding: 7px 15px;
+      color: #111827;
+    }
+
+    table.matrix-table {
+      border-collapse: separate;
+      border-spacing: 15px 7px;
+      font-size: 1.13rem;
+    }
+
+    table.matrix-table td {
+      min-width: 35px;
+      height: 30px;
+      text-align: center;
+      vertical-align: middle;
+      border-radius: 6px;
+      padding: 3px 5px;
+      transition: background 100ms ease, box-shadow 100ms ease;
+    }
+
+    table.matrix-table.interactive tr { cursor: pointer; touch-action: manipulation; }
+
+    @media (hover: hover) and (pointer: fine) {
+      table.matrix-table.interactive tr:hover td { background: var(--accent-soft); }
+    }
+    table.matrix-table tr.row-selected td {
+      background: var(--selected);
+      box-shadow: inset 0 0 0 1px var(--selected-border);
+    }
+
+    table.matrix-table tr.row-target-selected td {
+      background: #dbeafe;
+      box-shadow: inset 0 0 0 1px #60a5fa;
+    }
+
+    table.matrix-table td.pivot-candidate {
+      background: var(--guide-soft);
+      box-shadow: inset 0 0 0 2px var(--guide);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    table.matrix-table td.pivot-candidate:hover {
+      background: #99f6e4;
+    }
+
+    table.matrix-table td.pivot-zero {
+      background: var(--guide-muted);
+      color: #9aa3b2;
+      cursor: not-allowed;
+    }
+
+    table.matrix-table tr.guided-source-selected td {
+      background: var(--selected);
+      box-shadow: inset 0 0 0 1px var(--selected-border);
+    }
+
+    table.matrix-table tr.guided-target-selected td {
+      background: #dbeafe;
+      box-shadow: inset 0 0 0 1px #60a5fa;
+    }
+
+    table.matrix-table td.clear-target {
+      background: #fee2e2;
+      box-shadow: inset 0 0 0 2px #dc2626;
+      font-weight: 800;
+    }
+
+    table.matrix-table td.established-pivot {
+      box-shadow: inset 0 0 0 2px #7c3aed;
+      font-weight: 800;
+    }
+
+    table.matrix-table td.active-pivot {
+      background: #ede9fe;
+      box-shadow: inset 0 0 0 2px #6d28d9;
+      font-weight: 800;
+    }
+
+    .fraction {
+      display: inline-grid;
+      grid-template-rows: auto auto;
+      align-items: center;
+      justify-items: center;
+      line-height: 1;
+      vertical-align: middle;
+      min-width: 1.3em;
+    }
+
+    .fraction .num {
+      border-bottom: 1.25px solid currentColor;
+      padding: 0 0.15em 0.1em;
+    }
+
+    .fraction .den { padding-top: 0.11em; }
+    .fraction-sign { vertical-align: middle; margin-right: 0.08em; }
+
+    .interaction-panel {
+      border-top: 1px solid var(--line);
+      padding: 12px 14px;
+      background: #fbfcff;
+    }
+
+    .prompt-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      min-height: 38px;
+    }
+
+    .prompt-text { font-weight: 700; }
+    .prompt-hint { color: var(--muted); font-size: 0.92rem; }
+
+    .factor-input {
+      width: 150px;
+      padding: 7px 9px;
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+    }
+
+    .factor-input.invalid {
+      border-color: var(--danger);
+      outline: 2px solid rgba(180, 35, 24, 0.12);
+    }
+
+    .error-text { color: var(--danger); font-size: 0.9rem; font-weight: 650; }
+
+    .math-note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    .kbd {
+      display: inline-block;
+      border: 1px solid #bcc3d2;
+      border-bottom-width: 2px;
+      border-radius: 5px;
+      padding: 0 5px;
+      background: white;
+      color: #3e485f;
+      font-size: 0.84em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .practice-row-entry-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      padding: 5px 2px 7px;
+    }
+
+    .practice-row-input-scroller {
+      max-width: 100%;
+      overflow-x: auto;
+      padding: 1px 0 4px;
+    }
+
+    .practice-row-bracket {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      width: max-content;
+      padding: 7px 15px;
+      position: relative;
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+    }
+
+    .practice-row-bracket::before,
+    .practice-row-bracket::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      border-top: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+    }
+
+    .practice-row-bracket::before { left: 0; border-left: 2px solid currentColor; }
+    .practice-row-bracket::after { right: 0; border-right: 2px solid currentColor; }
+
+    .row-result-input {
+      width: 68px;
+      min-height: 42px;
+      border: 1px solid #bfc7d8;
+      border-radius: 8px;
+      text-align: center;
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+      font-size: 1rem;
+    }
+
+    .row-result-input.invalid {
+      border-color: var(--danger);
+      background: #fff2f0;
+      outline: 2px solid rgba(180, 35, 24, 0.12);
+    }
+
+    .strategy-feedback {
+      flex-basis: 100%;
+      border-left: 4px solid var(--practice);
+      background: var(--practice-soft);
+      border-radius: 8px;
+      padding: 9px 11px;
+      line-height: 1.4;
+    }
+
+    .strategy-feedback strong { display: block; margin-bottom: 2px; }
+    .strategy-feedback.efficient { border-left-color: var(--practice-good); background: #f0fdf4; }
+    .strategy-feedback.caution { border-left-color: var(--practice-warn); background: #fffbeb; }
+    .strategy-feedback.counterproductive { border-left-color: var(--danger); background: #fff1f2; }
+
+    .print-title { display: none; }
+
+    .haptics-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 38px;
+      color: var(--muted);
+      font-weight: 650;
+      user-select: none;
+    }
+
+    .haptics-option input { width: 18px; height: 18px; }
+
+    html, body, .work-panel, .history-scroll, .interaction-panel { overflow-anchor: none; }
+
+    .mobile-only { display: none; }
+
+    .mobile-prompt-actions { display: none; }
+    .mobile-back-control { display: none; }
+
+    .numeric-keypad {
+      display: none;
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+      margin-top: 10px;
+      padding: 9px 0 0;
+    }
+
+    .numeric-keypad.open { display: block; }
+
+    .keypad-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .keypad-label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .keypad-grid button {
+      min-height: 46px;
+      padding: 8px 6px;
+      font-size: 1.08rem;
+      font-weight: 700;
+      touch-action: manipulation;
+    }
+
+    .keypad-grid button.keypad-command {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .keypad-grid button.keypad-enter {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .keypad-nav {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+      max-width: 520px;
+      margin: 7px auto 0;
+    }
+
+    .keypad-nav button { min-height: 42px; touch-action: manipulation; }
+
+    .shake { animation: shake 180ms linear 1; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+
+
+
+    .fireworks-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 220;
+    }
+
+    .firework-burst {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      transform: translate(-50%, -50%);
+    }
+
+    .firework-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      margin-left: -5px;
+      margin-top: -5px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(255,255,255,0.96) 0%, var(--burst-color, #60a5fa) 58%, rgba(255,255,255,0) 100%);
+      animation: firework-core 860ms ease-out forwards;
+    }
+
+    .firework-particle {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      margin-left: -4px;
+      margin-top: -4px;
+      border-radius: 999px;
+      background: var(--burst-color, #60a5fa);
+      box-shadow: 0 0 10px color-mix(in srgb, var(--burst-color, #60a5fa) 65%, white 35%);
+      transform: rotate(var(--angle)) translateY(0) scale(1);
+      animation: firework-particle 980ms cubic-bezier(.18,.75,.25,1) forwards;
+      animation-delay: var(--delay, 0ms);
+      opacity: 0;
+    }
+
+    @keyframes firework-core {
+      0% { opacity: 0.95; transform: scale(0.3); }
+      70% { opacity: 0.9; transform: scale(2.2); }
+      100% { opacity: 0; transform: scale(2.8); }
+    }
+
+    @keyframes firework-particle {
+      0% { opacity: 0; transform: rotate(var(--angle)) translateY(0) scale(0.7); }
+      12% { opacity: 1; }
+      100% { opacity: 0; transform: rotate(var(--angle)) translateY(calc(-1 * var(--distance))) scale(0.2); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .shake { animation: none; }
+      * { scroll-behavior: auto !important; }
+    }
+
+    @media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
+      body {
+        padding-bottom: calc(var(--mobile-sheet-height, 110px) + 16px);
+        -webkit-tap-highlight-color: transparent;
+      }
+      .app { width: calc(100% - 12px); margin: 8px auto 18px; }
+      header { display: block; padding: 4px 4px 0; }
+      .mode-switch { margin-top: 12px; width: 100%; }
+      .mode-pill { flex: 1; min-height: 44px; }
+      .mode-pill:hover:not(:disabled) { background: transparent; color: var(--muted); border-color: transparent; }
+      .mode-pill.active:hover:not(:disabled),
+      .mode-pill.active:active:not(:disabled),
+      .mode-pill.active:focus { background: var(--accent); color: white; }
+      button, select { min-height: 44px; }
+      .setup-panel { padding: 12px; }
+      body.computation-active {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100dvh;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+      body.computation-active header { display: none; }
+      body.computation-active .app { margin-top: 0; }
+      body.computation-active .setup-panel { display: none; }
+      .mobile-only { display: inline-flex; }
+      .setup-toolbar { align-items: stretch; }
+      label.compact { flex: 1 1 135px; justify-content: space-between; }
+      label.compact select { flex: 1; }
+      .setup-toolbar > button { flex: 1 1 190px; }
+      .haptics-option { min-height: 44px; padding: 0 4px; }
+      .setup-panel .math-note { display: none; }
+      .matrix-entry { width: 68px; min-height: 44px; font-size: 1.05rem; }
+      .work-header {
+        position: sticky;
+        top: 0;
+        z-index: 25;
+        background: var(--panel);
+        padding: 10px;
+      }
+      .operation-toolbar, .export-toolbar {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+      }
+      .operation-toolbar .work-heading { grid-column: 1 / -1; }
+      .export-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .export-toolbar { display: none; }
+      .operation-toolbar button, .export-toolbar button { padding: 8px 5px; }
+      .relation, .relation-balance { width: 136px; flex-basis: 136px; }
+      .step-line { gap: 7px; justify-content: flex-start; padding-left: 2px; padding-right: 2px; }
+      .history-scroll {
+        overflow-anchor: none;
+        padding-left: 6px;
+        padding-right: 6px;
+        height: var(--mobile-history-height, 52vh);
+        max-height: none;
+        min-height: 180px;
+        scroll-padding-top: 12px;
+        scroll-padding-bottom: 12px;
+      }
+      table.matrix-table { border-spacing: 10px 7px; font-size: 1.08rem; }
+      table.matrix-table td { min-width: 38px; min-height: 36px; padding: 5px 6px; }
+      .interaction-panel {
+        position: fixed;
+        left: 6px;
+        right: 6px;
+        bottom: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        max-height: min(72dvh, 640px);
+        overflow: hidden;
+        padding: 10px max(10px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-bottom: 0;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -12px 28px rgba(28, 39, 67, 0.16);
+      }
+      .prompt-line {
+        align-items: stretch;
+        min-height: 0;
+        max-height: min(31dvh, 260px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+      .numeric-keypad { flex: 0 0 auto; }
+      .numeric-keypad .keypad-head { display: none; }
+      body.keypad-open .work-header { display: none; }
+      body.keypad-open .prompt-line {
+        min-height: 112px;
+        max-height: min(31dvh, 260px);
+      }
+      body.matrix-entry-active .prompt-line,
+      body.matrix-entry-active .mobile-prompt-actions { display: none; }
+      .prompt-text, .prompt-hint, .error-text { flex-basis: 100%; }
+      .factor-input { width: 100%; min-height: 46px; font-size: 1.08rem; }
+      .row-result-input { width: 64px; min-height: 46px; font-size: 1.05rem; }
+      .practice-row-entry-wrap {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        flex-basis: 100%;
+        overflow: visible;
+        scroll-margin-bottom: calc(var(--mobile-sheet-height, 0px) + 12px);
+      }
+      .practice-row-entry-wrap > button { width: 100%; }
+      .entry-wrap, .work-panel, .history-scroll, .matrix-bracket { scroll-margin-bottom: calc(var(--mobile-sheet-height, 0px) + 16px); }
+      .mobile-prompt-actions {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        min-height: 0;
+        margin-top: 8px;
+      }
+      .mobile-prompt-actions:empty { display: none; }
+      .mobile-back-control {
+        display: inline-flex;
+        min-width: 104px;
+        justify-content: center;
+      }
+      .kbd { display: inline-block; }
+    }
+
+
+
+    @media (max-height: 520px) and (min-width: 761px) and (pointer: coarse) {
+      body.computation-active {
+        padding-bottom: 0;
+      }
+      body.computation-active .app {
+        height: 100%;
+        margin-top: 0;
+        margin-bottom: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      body.computation-active header {
+        display: none;
+      }
+      body.computation-active .work-panel {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(430px, 49%);
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
+      }
+      body.computation-active .work-header {
+        grid-column: 1;
+        grid-row: 1;
+        position: static;
+        padding: 5px 8px;
+      }
+      body.computation-active .history-scroll {
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+        height: auto !important;
+        min-height: 0;
+        max-height: none;
+        padding: 6px;
+      }
+      body.computation-active .interaction-panel {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        position: static;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        width: auto;
+        height: 100%;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+        border: 0;
+        border-left: 1px solid var(--line);
+        border-radius: 0;
+        box-shadow: none;
+        padding: 8px 10px;
+      }
+      body.computation-active .prompt-line {
+        flex: 0 1 auto;
+        min-height: 0;
+        max-height: 132px;
+        overflow-y: auto;
+      }
+      body.computation-active .mobile-prompt-actions {
+        margin-top: 10px;
+      }
+      body.computation-active .mobile-back-control {
+        min-height: 36px;
+      }
+      body.computation-active .numeric-keypad {
+        padding-top: 5px;
+        margin-top: 5px;
+      }
+      body.computation-active .keypad-grid {
+        gap: 4px;
+      }
+      body.computation-active .keypad-grid button {
+        min-height: 32px;
+        padding: 3px 5px;
+        font-size: 0.94rem;
+      }
+      body.computation-active .keypad-nav {
+        gap: 4px;
+        margin-top: 4px;
+      }
+      body.computation-active .keypad-nav button {
+        min-height: 32px;
+        padding: 3px 5px;
+      }
+      body.computation-active .practice-row-entry-wrap {
+        grid-template-columns: minmax(0, 1fr) 112px;
+        align-items: center;
+        gap: 6px;
+      }
+      body.computation-active .practice-row-entry-wrap > button {
+        width: auto;
+        min-height: 42px;
+      }
+      body.computation-active .row-result-input {
+        min-height: 40px;
+      }
+      body.computation-active.keypad-open .work-header {
+        display: none;
+      }
+    }
+
+
+    @media print {
+      body { background: white; }
+      .app { width: 100%; margin: 0; }
+      header, .setup-panel, .work-header, .interaction-panel, .app-credit { display: none !important; }
+      .work-panel { border: 0; box-shadow: none; }
+      .numeric-keypad { display: none !important; }
+      .history-scroll {
+        max-height: none;
+        min-height: 0;
+        overflow: visible;
+        padding: 0;
+      }
+      .print-title {
+        display: block;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 18pt;
+        margin: 0 0 18pt;
+      }
+      .step-line { break-inside: avoid; margin-bottom: 13pt; }
+      table.matrix-table.interactive tr { cursor: default; }
+      table.matrix-table.interactive tr:hover td { background: transparent; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>Gaussian Elimination Trainer</h1>
+        <p class="subtitle">Enter a matrix, then choose Guided, Practice, or Free mode.</p>
+      </div>
+      <div class="mode-switch" aria-label="Mode selector">
+        <button id="guidedModeBtn" class="mode-pill" type="button" autocomplete="off" aria-pressed="false">Guided mode</button>
+        <button id="practiceModeBtn" class="mode-pill" type="button" autocomplete="off" aria-pressed="false">Practice mode</button>
+        <button id="freeModeBtn" class="mode-pill active" type="button" autocomplete="off" aria-pressed="true">Free mode</button>
+      </div>
+    </header>
+
+    <section class="panel setup-panel" aria-labelledby="setup-title">
+      <div class="setup-toolbar">
+        <strong id="setup-title">Matrix setup</strong>
+        <label class="compact">Rows <select id="rowCount" aria-label="Number of rows"></select></label>
+        <label class="compact">Columns <select id="colCount" aria-label="Number of columns"></select></label>
+        <label class="compact">Problem
+          <select id="problemType" aria-label="Random problem type">
+            <option value="mixed">Mixed practice</option>
+            <option value="basic">Basic elimination</option>
+            <option value="swap">Row interchange required</option>
+            <option value="convenient">Choose a convenient pivot</option>
+            <option value="fractions">Fractions likely</option>
+            <option value="skipped">Skipped pivot column</option>
+            <option value="zero-rows">Zero rows</option>
+            <option value="partial">Partially reduced</option>
+            <option value="challenge">Challenge</option>
+          </select>
+        </label>
+        <button id="randomBtn" type="button">Generate problem</button>
+        <button id="startBtn" type="button" class="primary">Start / reset computation</button>
+        <label class="haptics-option"><input id="hapticsToggle" type="checkbox" checked /> Haptic feedback</label>
+      </div>
+      <div class="entry-wrap">
+        <div id="entryMatrix" class="entry-matrix" aria-label="Matrix entry grid"></div>
+      </div>
+      <p class="math-note">Accepted entries include integers, fractions such as <span class="kbd">-7/3</span>, and terminating decimals such as <span class="kbd">1.25</span>. Decimals are converted exactly to rational numbers.</p>
+    </section>
+
+    <section class="panel work-panel" aria-labelledby="work-title">
+      <div class="work-header">
+        <div class="operation-toolbar">
+          <span class="work-heading" id="work-title">Row reduction</span>
+          <button id="scaleBtn" class="operation" type="button">Scale a row</button>
+          <button id="swapBtn" class="operation" type="button">Interchange rows</button>
+          <button id="replaceBtn" class="operation" type="button">Replace a row</button>
+          <button id="undoBtn" type="button">Undo</button>
+          <button id="redoBtn" type="button">Redo</button>
+          <button id="editMatrixBtn" class="mobile-only" type="button">Change matrix</button>
+        </div>
+        <div class="export-toolbar">
+          <button id="latexBtn" type="button">Save LaTeX</button>
+          <button id="pdfBtn" type="button">Save PDF</button>
+        </div>
+      </div>
+
+      <div id="historyScroll" class="history-scroll">
+        <div class="print-title">Gaussian elimination computation</div>
+        <div id="history"></div>
+      </div>
+
+      <div class="interaction-panel" id="interactionPanel">
+        <div id="promptLine" class="prompt-line" aria-live="polite">
+          <span class="prompt-text">Choose a row operation.</span>
+          <span class="prompt-hint">Only the most recent matrix is active.</span>
+        </div>
+        <div id="mobilePromptActions" class="mobile-prompt-actions" aria-label="Prompt navigation"></div>
+        <div id="numericKeypad" class="numeric-keypad" aria-hidden="true">
+    <div class="keypad-head">
+      <span id="keypadLabel" class="keypad-label" role="status" aria-live="polite">Number entry</span>
+      <button id="hideKeypadBtn" type="button">Hide keypad</button>
+    </div>
+    <div class="keypad-grid" aria-label="Numeric keypad">
+      <button type="button" data-key="7">7</button>
+      <button type="button" data-key="8">8</button>
+      <button type="button" data-key="9">9</button>
+      <button type="button" class="keypad-command" data-action="backspace" aria-label="Backspace">⌫</button>
+      <button type="button" data-key="4">4</button>
+      <button type="button" data-key="5">5</button>
+      <button type="button" data-key="6">6</button>
+      <button type="button" class="keypad-command" data-action="clear">Clear</button>
+      <button type="button" data-key="1">1</button>
+      <button type="button" data-key="2">2</button>
+      <button type="button" data-key="3">3</button>
+      <button type="button" data-action="minus" aria-label="Toggle negative sign">−</button>
+      <button type="button" data-key="0">0</button>
+      <button type="button" data-action="decimal" aria-label="Decimal point">.</button>
+      <button type="button" data-action="slash" aria-label="Fraction slash">/</button>
+      <button type="button" class="keypad-enter" data-action="enter">Enter</button>
+    </div>
+    <div class="keypad-nav">
+      <button id="keypadPrevious" type="button" data-action="previous">Previous</button>
+      <button id="keypadNext" type="button" data-action="next">Next</button>
+      <button type="button" data-action="hide">Done</button>
+    </div>
+        </div>
+      </div>
+    </section>
+    <footer class="app-credit">
+      Created by Sebastian Bozlee, Wake Forest University. Development assistance by ChatGPT.
+    </footer>
+  </main>
+
+
+
+  <div id="fireworksOverlay" class="fireworks-overlay" aria-hidden="true"></div>
+
+  <script>
+    "use strict";
+
+    const MAX_ROWS = 8;
+    const MAX_COLS = 10;
+
+    const rowCount = document.getElementById("rowCount");
+    const colCount = document.getElementById("colCount");
+    const entryMatrix = document.getElementById("entryMatrix");
+    const historyEl = document.getElementById("history");
+    const historyScroll = document.getElementById("historyScroll");
+    const fireworksOverlay = document.getElementById("fireworksOverlay");
+    const promptLine = document.getElementById("promptLine");
+    const mobilePromptActions = document.getElementById("mobilePromptActions");
+
+    const freeModeBtn = document.getElementById("freeModeBtn");
+    const guidedModeBtn = document.getElementById("guidedModeBtn");
+    const practiceModeBtn = document.getElementById("practiceModeBtn");
+    const scaleBtn = document.getElementById("scaleBtn");
+    const swapBtn = document.getElementById("swapBtn");
+    const replaceBtn = document.getElementById("replaceBtn");
+    const undoBtn = document.getElementById("undoBtn");
+    const redoBtn = document.getElementById("redoBtn");
+    const editMatrixBtn = document.getElementById("editMatrixBtn");
+    const randomBtn = document.getElementById("randomBtn");
+    const problemType = document.getElementById("problemType");
+    const startBtn = document.getElementById("startBtn");
+    const latexBtn = document.getElementById("latexBtn");
+    const pdfBtn = document.getElementById("pdfBtn");
+    const hapticsToggle = document.getElementById("hapticsToggle");
+    const interactionPanel = document.getElementById("interactionPanel");
+    const workPanel = document.querySelector(".work-panel");
+    const workHeader = document.querySelector(".work-header");
+    const entryWrap = document.querySelector(".entry-wrap");
+    const numericKeypad = document.getElementById("numericKeypad");
+    const keypadLabel = document.getElementById("keypadLabel");
+    const hideKeypadBtn = document.getElementById("hideKeypadBtn");
+    const keypadPrevious = document.getElementById("keypadPrevious");
+    const keypadNext = document.getElementById("keypadNext");
+
+    let activeNumericInput = null;
+    let mode = "free";
+    let history = [];
+    let historyIndex = -1;
+    let interaction = idleInteraction();
+    let guideState = null;
+    let guidedErrorCounts = {};
+    let lastManualScrollAt = 0;
+    let pendingMobileScroll = null;
+    let mobileLayoutFrame = 0;
+
+    function idleInteraction() {
+      return { stage: "idle", source: null, target: null, factor: null, attempts: 0 };
+    }
+
+    function mobileLayout() {
+      return window.matchMedia("(max-width: 760px), (max-height: 520px) and (pointer: coarse)").matches;
+    }
+
+    function customKeypadPreferred() {
+      return window.matchMedia("(pointer: coarse)").matches || mobileLayout();
+    }
+
+    function haptic(kind = "choice") {
+      if (!hapticsToggle?.checked || typeof navigator.vibrate !== "function") return;
+      const patterns = {
+        choice: 18,
+        success: 35,
+        error: [55, 35, 55],
+        complete: [70, 45, 70, 45, 150]
+      };
+      navigator.vibrate(patterns[kind] ?? patterns.choice);
+    }
+
+
+    function clearFireworks() {
+      if (fireworksOverlay) fireworksOverlay.innerHTML = "";
+    }
+
+    function launchFireworkBurst(x, y, color) {
+      if (!fireworksOverlay) return;
+      const burst = document.createElement("div");
+      burst.className = "firework-burst";
+      burst.style.left = `${x}%`;
+      burst.style.top = `${y}%`;
+      burst.style.setProperty("--burst-color", color);
+
+      const core = document.createElement("div");
+      core.className = "firework-core";
+      core.style.setProperty("--burst-color", color);
+      burst.appendChild(core);
+
+      const count = 16;
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement("span");
+        particle.className = "firework-particle";
+        particle.style.setProperty("--burst-color", color);
+        particle.style.setProperty("--angle", `${(360 / count) * i}deg`);
+        particle.style.setProperty("--distance", `${42 + Math.random() * 28}px`);
+        particle.style.setProperty("--delay", `${Math.floor(Math.random() * 70)}ms`);
+        burst.appendChild(particle);
+      }
+
+      fireworksOverlay.appendChild(burst);
+      window.setTimeout(() => burst.remove(), 1200);
+    }
+
+    function celebrateCompletion() {
+      if (!fireworksOverlay) return;
+      clearFireworks();
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const palette = ["#60a5fa", "#f59e0b", "#ef4444", "#10b981", "#a78bfa", "#ec4899"];
+      const bursts = reducedMotion
+        ? [{ x: 50, y: 28, t: 0 }]
+        : [
+            { x: 22, y: 36, t: 0 },
+            { x: 78, y: 32, t: 120 },
+            { x: 48, y: 24, t: 220 },
+            { x: 30, y: 20, t: 360 },
+            { x: 68, y: 18, t: 480 },
+            { x: 52, y: 42, t: 620 }
+          ];
+      bursts.forEach((burst, index) => {
+        window.setTimeout(() => {
+          launchFireworkBurst(burst.x, burst.y, palette[index % palette.length]);
+        }, burst.t);
+      });
+      window.setTimeout(clearFireworks, reducedMotion ? 900 : 1850);
+    }
+
+    function shake(element = interactionPanel) {
+      if (!element) return;
+      element.classList.remove("shake");
+      void element.offsetWidth;
+      element.classList.add("shake");
+      window.setTimeout(() => element.classList.remove("shake"), 220);
+    }
+
+    function configureNumericInput(input, kind) {
+      input.dataset.numericKind = kind;
+      input.autocomplete = "off";
+      input.autocapitalize = "off";
+      input.spellcheck = false;
+      input.inputMode = customKeypadPreferred() ? "none" : "text";
+      input.addEventListener("focus", () => {
+        activeNumericInput = input;
+        if (customKeypadPreferred()) showNumericKeypad(input);
+      });
+      input.addEventListener("pointerdown", () => {
+        activeNumericInput = input;
+        if (customKeypadPreferred()) window.setTimeout(() => showNumericKeypad(input), 0);
+      });
+      input.addEventListener("click", () => {
+        activeNumericInput = input;
+        if (customKeypadPreferred()) showNumericKeypad(input);
+      });
+    }
+
+    function refreshNumericInputModes() {
+      document.querySelectorAll(".matrix-entry, .factor-input, .row-result-input").forEach(input => {
+        input.inputMode = customKeypadPreferred() ? "none" : "text";
+      });
+      if (!customKeypadPreferred()) hideNumericKeypad();
+    }
+
+    function restorePageScrollPosition(scrollY) {
+      if (!mobileLayout() || !Number.isFinite(scrollY)) return;
+      const root = document.documentElement;
+      const previousBehavior = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      const restore = () => window.scrollTo({ top: scrollY, behavior: "auto" });
+      restore();
+      requestAnimationFrame(() => {
+        restore();
+        requestAnimationFrame(() => {
+          restore();
+          root.style.scrollBehavior = previousBehavior;
+        });
+      });
+    }
+
+    function showNumericKeypad(input) {
+      if (!input || !input.isConnected || !customKeypadPreferred()) return;
+      const preservePagePosition = mobileLayout() && !input.classList.contains("matrix-entry");
+      const pageScrollY = preservePagePosition ? window.scrollY : null;
+      activeNumericInput = input;
+      numericKeypad.classList.add("open");
+      numericKeypad.setAttribute("aria-hidden", "false");
+      document.body.classList.add("keypad-open");
+      document.body.classList.toggle("matrix-entry-active", input.classList.contains("matrix-entry"));
+      if (preservePagePosition) restorePageScrollPosition(pageScrollY);
+      keypadLabel.textContent = input.dataset.numericKind === "factor"
+        ? "Scaling factor"
+        : input.dataset.numericKind === "result"
+          ? "New row entry"
+          : input.getAttribute("aria-label") || "Matrix entry";
+      updateKeypadNavigation();
+      requestAnimationFrame(() => {
+        updateMobileLayoutMetrics();
+        if (input.classList.contains("matrix-entry")) {
+          centerElementInScroller(entryWrap, input);
+          ensurePageElementAboveSheet(input, true);
+        } else if (input.classList.contains("row-result-input")) {
+          const inputs = [...promptLine.querySelectorAll(".row-result-input")];
+          const col = inputs.indexOf(input);
+          centerElementInScroller(input.closest(".practice-row-input-scroller"), input);
+          settleMobileWorkspace({ force: true, focusColumn: col >= 0 ? col : null });
+        } else {
+          settleMobileWorkspace({ force: true });
+        }
+        requestAnimationFrame(() => {
+          if (input.closest("#promptLine")) input.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+        });
+      });
+    }
+
+    function hideNumericKeypad() {
+      const preservePagePosition = mobileLayout() && document.body.classList.contains("keypad-open");
+      const pageScrollY = preservePagePosition ? window.scrollY : null;
+      numericKeypad.classList.remove("open");
+      numericKeypad.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("keypad-open", "matrix-entry-active");
+      if (preservePagePosition) restorePageScrollPosition(pageScrollY);
+      updateMobileLayoutMetrics();
+    }
+
+    function numericInputs() {
+      if (activeNumericInput?.classList.contains("row-result-input")) {
+        return [...promptLine.querySelectorAll(".row-result-input")];
+      }
+      if (activeNumericInput?.classList.contains("factor-input")) return [activeNumericInput];
+      return [...entryMatrix.querySelectorAll(".matrix-entry")];
+    }
+
+    function updateKeypadNavigation() {
+      const inputs = numericInputs();
+      const index = inputs.indexOf(activeNumericInput);
+      const matrixInput = index >= 0;
+      keypadPrevious.disabled = !matrixInput || index === 0;
+      keypadNext.disabled = !matrixInput || index === inputs.length - 1;
+    }
+
+    function setNumericValue(input, value, caret = value.length) {
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.focus({ preventScroll: true });
+      try { input.setSelectionRange(caret, caret); } catch {}
+      updateKeypadNavigation();
+    }
+
+    function insertAtSelection(text) {
+      const input = activeNumericInput;
+      if (!input || !input.isConnected) return;
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? start;
+      const next = input.value.slice(0, start) + text + input.value.slice(end);
+      setNumericValue(input, next, start + text.length);
+    }
+
+    function rejectKeypadEntry(message) {
+      keypadLabel.textContent = message;
+      haptic("error");
+      shake(numericKeypad);
+      window.setTimeout(() => {
+        if (activeNumericInput?.isConnected) {
+          keypadLabel.textContent = activeNumericInput.dataset.numericKind === "factor"
+            ? "Scaling factor"
+            : activeNumericInput.dataset.numericKind === "result"
+              ? "New row entry"
+              : activeNumericInput.getAttribute("aria-label") || "Matrix entry";
+        }
+      }, 900);
+    }
+
+    function handleKeypadAction(action, key = null) {
+      const input = activeNumericInput;
+      if (action === "hide") { hideNumericKeypad(); return; }
+      if (!input || !input.isConnected) { hideNumericKeypad(); return; }
+
+      if (key !== null) { insertAtSelection(key); return; }
+      if (action === "minus") {
+        const value = input.value.startsWith("-") ? input.value.slice(1) : `-${input.value}`;
+        setNumericValue(input, value);
+        return;
+      }
+      if (action === "slash") {
+        if (input.value.includes("/") || input.value.includes(".") || !/^-?\d+$/.test(input.value)) {
+          rejectKeypadEntry("Use / only after an integer numerator.");
+          return;
+        }
+        insertAtSelection("/");
+        return;
+      }
+      if (action === "decimal") {
+        if (input.value.includes(".") || input.value.includes("/")) {
+          rejectKeypadEntry("A number can contain one decimal point or one slash, not both.");
+          return;
+        }
+        if (input.value === "" || input.value === "-") {
+          setNumericValue(input, `${input.value}0.`);
+        } else {
+          insertAtSelection(".");
+        }
+        return;
+      }
+      if (action === "backspace") {
+        const start = input.selectionStart ?? input.value.length;
+        const end = input.selectionEnd ?? start;
+        if (start !== end) {
+          setNumericValue(input, input.value.slice(0, start) + input.value.slice(end), start);
+        } else if (start > 0) {
+          setNumericValue(input, input.value.slice(0, start - 1) + input.value.slice(end), start - 1);
+        }
+        return;
+      }
+      if (action === "clear") { setNumericValue(input, ""); return; }
+      if (action === "previous" || action === "next") {
+        const inputs = numericInputs();
+        const index = inputs.indexOf(input);
+        if (index < 0) return;
+        const nextIndex = index + (action === "previous" ? -1 : 1);
+        if (inputs[nextIndex]) inputs[nextIndex].focus({ preventScroll: true });
+        return;
+      }
+      if (action === "enter") {
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+      }
+    }
+
+    function centerElementInScroller(scroller, element) {
+      if (!scroller || !element) return;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const delta = elementRect.left + elementRect.width / 2 - (scrollerRect.left + scrollerRect.width / 2);
+      scroller.scrollLeft = Math.max(0, scroller.scrollLeft + delta);
+    }
+
+    function centerEntryMatrix() {
+      requestAnimationFrame(() => {
+        entryWrap.scrollLeft = Math.max(0, (entryMatrix.scrollWidth - entryWrap.clientWidth) / 2);
+      });
+    }
+
+    function latestMatrixElements() {
+      const line = historyEl.querySelector(".step-line:last-child");
+      return {
+        line,
+        bracket: line?.querySelector(".matrix-bracket") || null,
+        table: line?.querySelector("table.matrix-table") || null
+      };
+    }
+
+    function centerLatestMatrix(focusColumn = null) {
+      if (!customKeypadPreferred()) return;
+      const { bracket, table } = latestMatrixElements();
+      if (!bracket) return;
+      const target = Number.isInteger(focusColumn)
+        ? table?.querySelector(`tr:first-child td:nth-child(${focusColumn + 1})`) || bracket
+        : bracket;
+      centerElementInScroller(historyScroll, target);
+    }
+
+    function currentFocusRows() {
+      const rows = new Set();
+      if (Number.isInteger(interaction.source)) rows.add(interaction.source);
+      if (Number.isInteger(interaction.target)) rows.add(interaction.target);
+      if (mode === "guided" && guideState) {
+        const pivot = activePivot();
+        if (pivot) rows.add(pivot.row);
+        if (guideState.stage === "swap-pivot") {
+          if (Number.isInteger(guideState.selectedRow)) rows.add(guideState.selectedRow);
+          if (Number.isInteger(guideState.pivotRow)) rows.add(guideState.pivotRow);
+        } else if (guideState.stage === "choose-pivot" && Number.isInteger(guideState.pivotRow)) {
+          rows.add(guideState.pivotRow);
+        }
+      }
+      return [...rows].sort((a, b) => a - b);
+    }
+
+    function currentFocusColumn() {
+      if (mode === "guided") return activePivot()?.col ?? guideState?.pivotCol ?? null;
+      if (activeNumericInput?.classList.contains("row-result-input")) {
+        const inputs = [...promptLine.querySelectorAll(".row-result-input")];
+        const index = inputs.indexOf(activeNumericInput);
+        return index >= 0 ? index : null;
+      }
+      return null;
+    }
+
+    function updateMobileInteractionClasses() {
+      document.body.classList.toggle("mobile-interaction-active", mobileLayout() && interaction.stage !== "idle");
+    }
+
+    function updateMobileLayoutMetrics() {
+      cancelAnimationFrame(mobileLayoutFrame);
+      mobileLayoutFrame = requestAnimationFrame(() => {
+        if (!mobileLayout()) {
+          document.documentElement.style.removeProperty("--mobile-sheet-height");
+          document.documentElement.style.removeProperty("--mobile-history-height");
+          document.body.classList.remove("mobile-interaction-active", "matrix-entry-active");
+          return;
+        }
+        updateMobileInteractionClasses();
+        const sheetRect = interactionPanel.getBoundingClientRect();
+        const historyRect = historyScroll.getBoundingClientRect();
+        const sheetHeight = Math.ceil(sheetRect.height);
+        // Size the history from its actual on-screen top to the sheet's actual top.
+        // This remains correct when the operation header collapses or the browser's
+        // visual viewport changes height.
+        const availableHeight = Math.floor(sheetRect.top - historyRect.top - 10);
+        const historyHeight = Math.max(72, availableHeight);
+        document.documentElement.style.setProperty("--mobile-sheet-height", `${sheetHeight}px`);
+        document.documentElement.style.setProperty("--mobile-history-height", `${historyHeight}px`);
+      });
+    }
+
+    function noteManualScroll() { lastManualScrollAt = Date.now(); }
+
+    function autoScrollAllowed(force = false) {
+      return force || Date.now() - lastManualScrollAt > 700;
+    }
+
+    function scrollBehaviorFor(delta) {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return "auto";
+      return Math.abs(delta) < 360 ? "smooth" : "auto";
+    }
+
+    function ensurePageElementAboveSheet(element, force = false) {
+      if (!mobileLayout() || !element || !autoScrollAllowed(force)) return;
+      const vv = window.visualViewport;
+      const viewportTop = vv?.offsetTop || 0;
+      const viewportHeight = vv?.height || window.innerHeight;
+      const sheetHeight = interactionPanel.getBoundingClientRect().height;
+      const usableTop = viewportTop + 8;
+      const usableBottom = viewportTop + viewportHeight - sheetHeight - 12;
+      const rect = element.getBoundingClientRect();
+      let delta = 0;
+      if (rect.top < usableTop) delta = rect.top - usableTop;
+      else if (rect.bottom > usableBottom) delta = rect.bottom - usableBottom;
+      if (Math.abs(delta) > 2) window.scrollBy({ top: delta, behavior: scrollBehaviorFor(delta) });
+    }
+
+    function scrollToWorkArea() {
+      if (!mobileLayout()) return;
+      if (document.body.classList.contains("computation-active")) {
+        window.scrollTo({ top: 0, behavior: "auto" });
+        return;
+      }
+      const top = workPanel.getBoundingClientRect().top + window.scrollY - 8;
+      window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+    }
+
+    function setHistoryScrollTop(top) {
+      const previousBehavior = historyScroll.style.scrollBehavior;
+      historyScroll.style.scrollBehavior = "auto";
+      historyScroll.scrollTop = Math.max(0, Math.min(top, historyScroll.scrollHeight - historyScroll.clientHeight));
+      requestAnimationFrame(() => { historyScroll.style.scrollBehavior = previousBehavior; });
+    }
+
+    function ensureRowsVisible(rowIndexes) {
+      const { table } = latestMatrixElements();
+      if (!table || !rowIndexes.length) return;
+      const rows = rowIndexes.map(index => table.rows[index]).filter(Boolean);
+      if (!rows.length) return;
+      const containerRect = historyScroll.getBoundingClientRect();
+      const firstRect = rows[0].getBoundingClientRect();
+      const lastRect = rows[rows.length - 1].getBoundingClientRect();
+      let delta = 0;
+      if (firstRect.top < containerRect.top + 10) delta = firstRect.top - (containerRect.top + 10);
+      else if (lastRect.bottom > containerRect.bottom - 10) delta = lastRect.bottom - (containerRect.bottom - 10);
+      if (Math.abs(delta) > 1) setHistoryScrollTop(historyScroll.scrollTop + delta);
+    }
+
+    function jumpHistoryToBottom() {
+      setHistoryScrollTop(historyScroll.scrollHeight);
+    }
+
+    function fitCurrentMatrixInHistory({ toBottom = false, focusColumn = null, force = false } = {}) {
+      if (!currentMatrix() || (mobileLayout() && !autoScrollAllowed(force))) return;
+      const { line } = latestMatrixElements();
+      if (!line) return;
+      if (toBottom) {
+        jumpHistoryToBottom();
+      } else {
+        const containerRect = historyScroll.getBoundingClientRect();
+        const lineRect = line.getBoundingClientRect();
+        if (lineRect.bottom > containerRect.bottom - 8) {
+          setHistoryScrollTop(historyScroll.scrollTop + lineRect.bottom - (containerRect.bottom - 8));
+        } else if (lineRect.top < containerRect.top + 8) {
+          setHistoryScrollTop(historyScroll.scrollTop + lineRect.top - (containerRect.top + 8));
+        }
+      }
+      requestAnimationFrame(() => {
+        if (mobileLayout()) ensureRowsVisible(currentFocusRows());
+        centerLatestMatrix(Number.isInteger(focusColumn) ? focusColumn : currentFocusColumn());
+      });
+    }
+
+    function settleMobileWorkspace(options = {}) {
+      if (!mobileLayout()) return;
+      requestAnimationFrame(() => {
+        updateMobileLayoutMetrics();
+        requestAnimationFrame(() => {
+          updateMobileLayoutMetrics();
+          requestAnimationFrame(() => fitCurrentMatrixInHistory(options));
+        });
+      });
+    }
+
+
+    function revealLatestMatrixReliably(options = {}) {
+      const reveal = () => fitCurrentMatrixInHistory({ force: true, toBottom: true, ...options });
+      requestAnimationFrame(reveal);
+      window.setTimeout(reveal, 45);
+      window.setTimeout(reveal, 110);
+    }
+
+    function scrollToEntryMatrix(force = false, focusFirst = false) {
+      if (!mobileLayout()) return;
+      updateMobileLayoutMetrics();
+      centerEntryMatrix();
+      requestAnimationFrame(() => {
+        const target = focusFirst ? entryMatrix.querySelector("input") : entryWrap;
+        ensurePageElementAboveSheet(target, force);
+        if (focusFirst) entryMatrix.querySelector("input")?.focus({ preventScroll: true });
+      });
+    }
+
+    function requestMobileScroll(options = {}) {
+      pendingMobileScroll = { ...options };
+    }
+
+    function consumeMobileScroll(fallback = null) {
+      const options = pendingMobileScroll || fallback;
+      pendingMobileScroll = null;
+      if (!options) return;
+      settleMobileWorkspace(options);
+    }
+
+    function cloneGuide(state) {
+      if (!state) return null;
+      return {
+        ...state,
+        pivots: state.pivots.map(pivot => ({ ...pivot }))
+      };
+    }
+
+    function absBigInt(x) { return x < 0n ? -x : x; }
+
+    function gcd(a, b) {
+      a = absBigInt(a);
+      b = absBigInt(b);
+      while (b !== 0n) {
+        const t = a % b;
+        a = b;
+        b = t;
+      }
+      return a;
+    }
+
+    function frac(n, d = 1n) {
+      if (d === 0n) throw new Error("Denominator cannot be zero.");
+      if (d < 0n) { n = -n; d = -d; }
+      if (n === 0n) return { n: 0n, d: 1n };
+      const g = gcd(n, d);
+      return { n: n / g, d: d / g };
+    }
+
+    function addFrac(a, b) { return frac(a.n * b.d + b.n * a.d, a.d * b.d); }
+    function mulFrac(a, b) { return frac(a.n * b.n, a.d * b.d); }
+    function negFrac(a) { return frac(-a.n, a.d); }
+    function divFrac(a, b) {
+      if (isZero(b)) throw new Error("Cannot divide by zero.");
+      return frac(a.n * b.d, a.d * b.n);
+    }
+    function isZero(a) { return a.n === 0n; }
+    function isOne(a) { return a.n === a.d; }
+    function equalFrac(a, b) { return a.n === b.n && a.d === b.d; }
+
+    function parseRational(raw) {
+      const text = String(raw).trim().replace(/−/g, "-");
+      if (text === "") throw new Error("Enter a number.");
+
+      const fractionMatch = text.match(/^([+-]?\d+)\s*\/\s*([+-]?\d+)$/);
+      if (fractionMatch) return frac(BigInt(fractionMatch[1]), BigInt(fractionMatch[2]));
+      if (/^[+-]?\d+$/.test(text)) return frac(BigInt(text));
+
+      const decimalMatch = text.match(/^([+-]?)(\d*)\.(\d+)$/);
+      if (decimalMatch && decimalMatch[2] !== "") {
+        const sign = decimalMatch[1] === "-" ? -1n : 1n;
+        const whole = decimalMatch[2] === "" ? "0" : decimalMatch[2];
+        const digits = decimalMatch[3];
+        const denominator = 10n ** BigInt(digits.length);
+        const numerator = BigInt(whole) * denominator + BigInt(digits);
+        return frac(sign * numerator, denominator);
+      }
+
+      throw new Error("Use an integer, a/b, or a terminating decimal.");
+    }
+
+    function cloneMatrix(matrix) {
+      return matrix.map(row => row.map(x => ({ n: x.n, d: x.d })));
+    }
+
+    function rationalText(x) {
+      return x.d === 1n ? x.n.toString() : `${x.n}/${x.d}`;
+    }
+
+    function rationalLatex(x) {
+      if (x.d === 1n) return x.n.toString();
+      const sign = x.n < 0n ? "-" : "";
+      return `${sign}\\frac{${absBigInt(x.n)}}{${x.d}}`;
+    }
+
+    function rationalNode(x) {
+      if (x.d === 1n) return document.createTextNode(x.n.toString());
+      const wrap = document.createElement("span");
+      if (x.n < 0n) {
+        const sign = document.createElement("span");
+        sign.className = "fraction-sign";
+        sign.textContent = "−";
+        wrap.appendChild(sign);
+      }
+      const f = document.createElement("span");
+      f.className = "fraction";
+      const num = document.createElement("span");
+      num.className = "num";
+      num.textContent = absBigInt(x.n).toString();
+      const den = document.createElement("span");
+      den.className = "den";
+      den.textContent = x.d.toString();
+      f.append(num, den);
+      wrap.appendChild(f);
+      return wrap;
+    }
+
+    function populateSizeSelectors() {
+      for (let i = 1; i <= MAX_ROWS; i++) rowCount.add(new Option(String(i), String(i)));
+      for (let i = 1; i <= MAX_COLS; i++) colCount.add(new Option(String(i), String(i)));
+      rowCount.value = "3";
+      colCount.value = "4";
+    }
+
+    function buildEntryGrid(preserve = null, reveal = false) {
+      const rows = Number(rowCount.value);
+      const cols = Number(colCount.value);
+      entryMatrix.innerHTML = "";
+      entryMatrix.style.gridTemplateColumns = `repeat(${cols}, 72px)`;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const input = document.createElement("input");
+          input.className = "matrix-entry";
+          input.type = "text";
+          input.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}`);
+          configureNumericInput(input, "matrix");
+          input.value = preserve?.[r]?.[c] ?? "0";
+          input.addEventListener("input", () => input.classList.remove("invalid"));
+          input.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              const inputs = [...entryMatrix.querySelectorAll("input")];
+              const index = inputs.indexOf(input);
+              if (index < inputs.length - 1) inputs[index + 1].focus();
+              else startComputation();
+            }
+          });
+          entryMatrix.appendChild(input);
+        }
+      }
+      centerEntryMatrix();
+      if (reveal) requestAnimationFrame(() => scrollToEntryMatrix(true, true));
+    }
+
+    function readEntryMatrix() {
+      const rows = Number(rowCount.value);
+      const cols = Number(colCount.value);
+      const inputs = [...entryMatrix.querySelectorAll("input")];
+      let ok = true;
+      const matrix = [];
+      for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+          const input = inputs[r * cols + c];
+          try {
+            row.push(parseRational(input.value));
+            input.classList.remove("invalid");
+          } catch {
+            ok = false;
+            input.classList.add("invalid");
+          }
+        }
+        matrix.push(row);
+      }
+      if (!ok) throw new Error("Correct the highlighted matrix entries.");
+      return matrix;
+    }
+
+    function initializeHistory(matrix, { revealWork = false } = {}) {
+      hideNumericKeypad();
+      interaction = idleInteraction();
+      guideState = mode === "guided" ? initializeGuide(matrix) : null;
+      guidedErrorCounts = {};
+      history = [{
+        matrix: cloneMatrix(matrix),
+        opHTML: "",
+        opLatex: "",
+        guideBefore: null,
+        guideAfter: cloneGuide(guideState),
+        practiceFeedback: null
+      }];
+      historyIndex = 0;
+      setActiveOperationButton(null);
+      renderHistory(true);
+      if (revealWork) requestAnimationFrame(() => scrollToWorkArea());
+      if (mode === "guided" && guideState?.stage === "complete") haptic("complete");
+    }
+
+    function startComputation() {
+      try {
+        const matrix = readEntryMatrix();
+        if (mobileLayout()) document.body.classList.add("computation-active");
+        initializeHistory(matrix, { revealWork: true });
+        if (mobileLayout()) {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: "auto" });
+            updateMobileLayoutMetrics();
+            settleMobileWorkspace({ force: true, toBottom: true });
+          });
+        }
+      } catch (error) {
+        setPrompt(error.message, "Check every highlighted entry.", true);
+        haptic("error");
+        shake(document.querySelector(".setup-panel"));
+      }
+    }
+
+    function returnToMatrixSetup() {
+      hideNumericKeypad();
+      document.body.classList.remove("computation-active");
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "auto" });
+        updateMobileLayoutMetrics();
+        centerEntryMatrix();
+      });
+    }
+
+    function updateModeControls() {
+      // Firefox may restore a button's previous disabled state after a reload.
+      // Mode selection must always remain available.
+      [freeModeBtn, guidedModeBtn, practiceModeBtn].forEach(button => {
+        button.disabled = false;
+        button.removeAttribute("disabled");
+      });
+      freeModeBtn.classList.toggle("active", mode === "free");
+      guidedModeBtn.classList.toggle("active", mode === "guided");
+      practiceModeBtn.classList.toggle("active", mode === "practice");
+      freeModeBtn.setAttribute("aria-pressed", String(mode === "free"));
+      guidedModeBtn.setAttribute("aria-pressed", String(mode === "guided"));
+      practiceModeBtn.setAttribute("aria-pressed", String(mode === "practice"));
+    }
+
+    function switchMode(nextMode) {
+      if (!["free", "guided", "practice"].includes(nextMode)) return;
+      if (nextMode === mode) {
+        updateModeControls();
+        return;
+      }
+      const initialMatrix = history.length ? cloneMatrix(history[0].matrix) : null;
+      mode = nextMode;
+      updateModeControls();
+      if (initialMatrix) initializeHistory(initialMatrix, { revealWork: false });
+      else {
+        interaction = idleInteraction();
+        guideState = null;
+        renderHistory();
+      }
+    }
+
+    function currentMatrix() {
+      return historyIndex >= 0 ? history[historyIndex].matrix : null;
+    }
+
+    function findPivotColumn(matrix, startRow, startCol) {
+      if (startRow >= matrix.length) return null;
+      const cols = matrix[0].length;
+      for (let col = startCol; col < cols; col++) {
+        for (let row = startRow; row < matrix.length; row++) {
+          if (!isZero(matrix[row][col])) return col;
+        }
+      }
+      return null;
+    }
+
+    function initializeGuide(matrix) {
+      const state = {
+        phase: "forward",
+        stage: "choose-pivot",
+        pivotRow: 0,
+        pivotCol: null,
+        searchCol: 0,
+        selectedRow: null,
+        pivots: [],
+        backwardIndex: null
+      };
+      const col = findPivotColumn(matrix, 0, 0);
+      if (col === null) return { ...state, phase: "complete", stage: "complete" };
+      state.pivotCol = col;
+      return state;
+    }
+
+    function activePivot(state = guideState) {
+      if (!state) return null;
+      if (state.phase === "backward") return state.pivots[state.backwardIndex] ?? null;
+      if (state.stage === "swap-pivot") {
+        return { row: state.selectedRow, col: state.pivotCol };
+      }
+      if (["forward-pivot-ready", "forward-eliminate"].includes(state.stage)) {
+        return { row: state.pivotRow, col: state.pivotCol };
+      }
+      return null;
+    }
+
+    function forwardTargets(matrix, state = guideState) {
+      if (!state || state.stage !== "forward-eliminate") return [];
+      const targets = [];
+      for (let row = state.pivotRow + 1; row < matrix.length; row++) {
+        if (!isZero(matrix[row][state.pivotCol])) targets.push(row);
+      }
+      return targets;
+    }
+
+    function backwardTargets(matrix, state = guideState) {
+      if (!state || state.stage !== "backward-eliminate") return [];
+      const pivot = state.pivots[state.backwardIndex];
+      const targets = [];
+      for (let row = 0; row < pivot.row; row++) {
+        if (!isZero(matrix[row][pivot.col])) targets.push(row);
+      }
+      return targets;
+    }
+
+    function guidedEligibleTargets(matrix = currentMatrix(), state = guideState) {
+      if (!matrix || !state) return [];
+      if (state.stage === "forward-eliminate") return forwardTargets(matrix, state);
+      if (state.stage === "backward-eliminate") return backwardTargets(matrix, state);
+      return [];
+    }
+
+    function afterPivotPositioned(matrix, state) {
+      const next = cloneGuide(state);
+      next.selectedRow = null;
+      if (!next.pivots.some(p => p.row === next.pivotRow && p.col === next.pivotCol)) {
+        next.pivots.push({ row: next.pivotRow, col: next.pivotCol });
+      }
+      if (isOne(matrix[next.pivotRow][next.pivotCol])) {
+        next.stage = "forward-eliminate";
+        return normalizeForward(matrix, next);
+      }
+      next.stage = "forward-pivot-ready";
+      return next;
+    }
+
+    function normalizeForward(matrix, state) {
+      const next = cloneGuide(state);
+      next.stage = "forward-eliminate";
+      if (forwardTargets(matrix, next).length) return next;
+
+      const newPivotRow = next.pivotRow + 1;
+      const newSearchCol = next.pivotCol + 1;
+      const nextCol = findPivotColumn(matrix, newPivotRow, newSearchCol);
+      if (nextCol === null) {
+        next.phase = "transition";
+        next.stage = "forward-complete";
+        next.backwardIndex = next.pivots.length - 1;
+        next.selectedRow = null;
+        return next;
+      }
+
+      next.phase = "forward";
+      next.stage = "choose-pivot";
+      next.pivotRow = newPivotRow;
+      next.searchCol = newSearchCol;
+      next.pivotCol = nextCol;
+      next.selectedRow = null;
+      return next;
+    }
+
+    function normalizeBackward(matrix, state) {
+      const next = cloneGuide(state);
+      next.phase = "backward";
+      while (next.backwardIndex >= 0) {
+        const pivot = next.pivots[next.backwardIndex];
+        if (!isOne(matrix[pivot.row][pivot.col])) {
+          next.stage = "backward-scale";
+          return next;
+        }
+        next.stage = "backward-eliminate";
+        if (backwardTargets(matrix, next).length) return next;
+        next.backwardIndex--;
+      }
+      next.phase = "complete";
+      next.stage = "complete";
+      return next;
+    }
+
+    function chooseGuidedPivot(rowIndex) {
+      if (mode !== "guided" || !guideState || guideState.stage !== "choose-pivot") return;
+      if (rowIndex < guideState.pivotRow || isZero(currentMatrix()[rowIndex][guideState.pivotCol])) return;
+      haptic("choice");
+      guidedErrorCounts = {};
+      guideState = cloneGuide(guideState);
+      guideState.selectedRow = rowIndex;
+      if (rowIndex === guideState.pivotRow) {
+        guideState = afterPivotPositioned(currentMatrix(), guideState);
+      } else {
+        guideState.stage = "swap-pivot";
+      }
+      interaction = idleInteraction();
+      renderHistory();
+    }
+
+    function matrixNode(matrix, interactive) {
+      const bracket = document.createElement("div");
+      bracket.className = "matrix-bracket";
+      const table = document.createElement("table");
+      table.className = `matrix-table${interactive ? " interactive" : ""}`;
+      table.setAttribute("role", "grid");
+
+      const pivot = mode === "guided" && interactive ? activePivot() : null;
+
+      matrix.forEach((row, rowIndex) => {
+        const tr = document.createElement("tr");
+        tr.dataset.row = String(rowIndex);
+
+        if (interactive && mode !== "guided" && rowIndex === interaction.source && interaction.stage !== "idle") {
+          tr.classList.add("row-selected");
+        }
+        if (interactive && mode !== "guided" && ["replace-factor", "practice-replace-row-entry"].includes(interaction.stage) && rowIndex === interaction.target) {
+          tr.classList.add("row-target-selected");
+        }
+
+        if (interactive && mode === "guided") {
+          if (["guided-replace-target", "guided-replace-factor", "guided-swap-second"].includes(interaction.stage) && rowIndex === interaction.source) {
+            tr.classList.add("guided-source-selected");
+          }
+          if (interaction.stage === "guided-replace-factor" && rowIndex === interaction.target) {
+            tr.classList.add("guided-target-selected");
+          }
+        }
+
+        row.forEach((value, colIndex) => {
+          const td = document.createElement("td");
+          td.appendChild(rationalNode(value));
+
+          if (mode === "guided" && interactive) {
+            if (guideState?.pivots.some(p => p.row === rowIndex && p.col === colIndex)) {
+              td.classList.add("established-pivot");
+            }
+            if (pivot && pivot.row === rowIndex && pivot.col === colIndex) td.classList.add("active-pivot");
+            if (interaction.stage === "guided-replace-factor" && rowIndex === interaction.target && pivot?.col === colIndex) {
+              td.classList.add("clear-target");
+              td.setAttribute("aria-label", `Entry to clear in row ${rowIndex + 1}, column ${colIndex + 1}`);
+            }
+
+            if (interactive && guideState?.stage === "choose-pivot" && colIndex === guideState.pivotCol && rowIndex >= guideState.pivotRow) {
+              if (isZero(value)) {
+                td.classList.add("pivot-zero");
+              } else {
+                td.classList.add("pivot-candidate");
+                td.setAttribute("role", "button");
+                td.setAttribute("tabindex", "0");
+                td.setAttribute("aria-label", `Choose entry in row ${rowIndex + 1} as pivot`);
+                td.addEventListener("click", event => {
+                  event.stopPropagation();
+                  chooseGuidedPivot(rowIndex);
+                });
+                td.addEventListener("keydown", event => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    chooseGuidedPivot(rowIndex);
+                  }
+                });
+              }
+            }
+          }
+          tr.appendChild(td);
+        });
+
+        if (interactive && mode !== "guided" && expectsOpenRow()) {
+          tr.addEventListener("click", () => handleOpenRowClick(rowIndex));
+        }
+        if (interactive && mode === "guided" && ["guided-swap-first", "guided-swap-second"].includes(interaction.stage)) {
+          tr.addEventListener("click", () => chooseGuidedSwapRow(rowIndex));
+        }
+        if (interactive && mode === "guided" && interaction.stage === "guided-replace-source") {
+          tr.addEventListener("click", () => chooseGuidedSource(rowIndex));
+        }
+        if (interactive && mode === "guided" && interaction.stage === "guided-replace-target") {
+          tr.addEventListener("click", () => chooseGuidedTarget(rowIndex));
+        }
+        table.appendChild(tr);
+      });
+      bracket.appendChild(table);
+      return bracket;
+    }
+
+    function renderHistory(scrollToBottom = false) {
+      historyEl.innerHTML = "";
+      if (historyIndex < 0) {
+        const empty = document.createElement("div");
+        empty.className = "history-empty";
+        empty.textContent = "Enter a matrix above, then start the computation.";
+        historyEl.appendChild(empty);
+      } else {
+        for (let i = 0; i <= historyIndex; i++) {
+          const line = document.createElement("div");
+          line.className = "step-line";
+          if (i > 0) {
+            const relation = document.createElement("div");
+            relation.className = "relation";
+            const label = document.createElement("div");
+            label.className = "op-label";
+            label.innerHTML = history[i].opHTML;
+            const tilde = document.createElement("div");
+            tilde.className = "tilde";
+            tilde.textContent = "∼";
+            relation.append(label, tilde);
+            line.appendChild(relation);
+          } else {
+            const spacer = document.createElement("div");
+            spacer.className = "relation";
+            spacer.setAttribute("aria-hidden", "true");
+            line.appendChild(spacer);
+          }
+          line.appendChild(matrixNode(history[i].matrix, i === historyIndex));
+          const balance = document.createElement("div");
+          balance.className = "relation-balance";
+          balance.setAttribute("aria-hidden", "true");
+          line.appendChild(balance);
+          historyEl.appendChild(line);
+        }
+      }
+      updateButtons();
+      renderPrompt();
+      updateMobileInteractionClasses();
+      requestAnimationFrame(() => {
+        updateMobileLayoutMetrics();
+        const requested = pendingMobileScroll;
+        pendingMobileScroll = null;
+        requestAnimationFrame(() => {
+          updateMobileLayoutMetrics();
+          requestAnimationFrame(() => {
+            if (scrollToBottom) revealLatestMatrixReliably();
+            else if (requested) fitCurrentMatrixInHistory(requested);
+            else if (mobileLayout() && interaction.stage !== "idle") fitCurrentMatrixInHistory({ force: true });
+            else if (!mobileLayout()) fitCurrentMatrixInHistory({ force: true });
+            if (activeNumericInput && !activeNumericInput.isConnected) hideNumericKeypad();
+          });
+        });
+      });
+    }
+
+    function setActiveOperationButton(which) {
+      [scaleBtn, swapBtn, replaceBtn].forEach(btn => btn.classList.remove("active"));
+      if (which) which.classList.add("active");
+    }
+
+    function updateButtons() {
+      const hasMatrix = historyIndex >= 0;
+      scaleBtn.disabled = true;
+      swapBtn.disabled = true;
+      replaceBtn.disabled = true;
+
+      if (mode === "free" || mode === "practice") {
+        scaleBtn.disabled = !hasMatrix;
+        swapBtn.disabled = !hasMatrix || currentMatrix().length < 2;
+        replaceBtn.disabled = !hasMatrix || currentMatrix().length < 2;
+      } else if (hasMatrix && guideState && interaction.stage === "idle" && guideState.stage !== "complete") {
+        // In Guided mode, operation choice is itself part of the exercise.
+        // Incorrect buttons stay clickable and produce graduated feedback.
+        scaleBtn.disabled = false;
+        swapBtn.disabled = currentMatrix().length < 2;
+        replaceBtn.disabled = currentMatrix().length < 2;
+      }
+
+      undoBtn.disabled = historyIndex <= 0;
+      redoBtn.disabled = historyIndex < 0 || historyIndex >= history.length - 1;
+      latexBtn.disabled = !hasMatrix;
+      pdfBtn.disabled = !hasMatrix;
+    }
+
+    function expectsOpenRow() {
+      return ["scale-row", "swap-first", "swap-second", "replace-source", "replace-target"].includes(interaction.stage);
+    }
+
+    function setPrompt(main, hint = "", isError = false, includeFactor = false) {
+      promptLine.innerHTML = "";
+      const mainSpan = document.createElement("span");
+      mainSpan.className = isError ? "error-text" : "prompt-text";
+      mainSpan.textContent = main;
+      promptLine.appendChild(mainSpan);
+
+      if (includeFactor) {
+        const input = document.createElement("input");
+        input.id = "factorInput";
+        input.className = "factor-input";
+        input.type = "text";
+        input.placeholder = "e.g. -3/2";
+        input.setAttribute("aria-label", "Scaling factor");
+        configureNumericInput(input, "factor");
+        input.addEventListener("keydown", handleFactorKeydown);
+        input.addEventListener("input", () => {
+          input.classList.remove("invalid");
+          const old = promptLine.querySelector(".error-text");
+          if (old) old.remove();
+        });
+        promptLine.appendChild(input);
+        requestAnimationFrame(() => {
+          input.focus(customKeypadPreferred() ? { preventScroll: true } : undefined);
+          if (customKeypadPreferred()) showNumericKeypad(input);
+        });
+      }
+
+      if (hint) {
+        const hintSpan = document.createElement("span");
+        hintSpan.className = "prompt-hint";
+        hintSpan.innerHTML = hint;
+        promptLine.appendChild(hintSpan);
+      }
+    }
+
+    function appendPromptButton(label, handler, primary = false) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      if (primary) button.className = "primary";
+      button.addEventListener("click", handler);
+      promptLine.appendChild(button);
+      return button;
+    }
+
+    function renderPrompt() {
+      mobilePromptActions.innerHTML = "";
+      if (mode === "guided") renderGuidedPrompt();
+      else if (mode === "practice") renderPracticePrompt();
+      else renderFreePrompt();
+      appendMobileBackControl();
+      updateMobileInteractionClasses();
+      updateMobileLayoutMetrics();
+      if (mobileLayout() && currentMatrix()) {
+        settleMobileWorkspace({ focusColumn: currentFocusColumn(), force: true });
+      }
+    }
+
+    function appendMobileBackControl() {
+      const hasInteraction = interaction.stage !== "idle";
+      const canReturnToPivotChoice = mode === "guided" && interaction.stage === "idle" && guideState?.stage === "swap-pivot";
+      if (!hasInteraction && !canReturnToPivotChoice) return;
+
+      const backStages = new Set([
+        "scale-factor", "replace-target", "replace-factor",
+        "practice-scale-row-entry", "practice-replace-row-entry",
+        "guided-swap-second", "guided-replace-target", "guided-replace-factor"
+      ]);
+      const label = canReturnToPivotChoice ? "Choose another pivot" : backStages.has(interaction.stage) ? "Back" : "Cancel";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.className = "mobile-back-control";
+      button.addEventListener("click", performBackAction);
+      mobilePromptActions.appendChild(button);
+    }
+
+    function renderFreePrompt() {
+      const esc = customKeypadPreferred() ? "<strong>Back</strong>" : '<span class="kbd">Esc</span>';
+      if (historyIndex < 0) {
+        setPrompt("Enter a matrix above, then start the computation.", "Choose a size or generate a problem first.");
+        return;
+      }
+      switch (interaction.stage) {
+        case "idle":
+          setPrompt("Choose a row operation.", "Only the most recent matrix is active.");
+          break;
+        case "scale-row":
+          setPrompt("Select the row to scale.", `${esc} cancels.`);
+          break;
+        case "scale-factor":
+          setPrompt(`Enter a nonzero factor for row ${interaction.source + 1}.`, `<span class="kbd">Enter</span> applies it; ${esc} returns to row selection.`, false, true);
+          break;
+        case "swap-first":
+          setPrompt("Select the first row to interchange.", `${esc} cancels.`);
+          break;
+        case "swap-second":
+          setPrompt(`Select a different row to interchange with row ${interaction.source + 1}.`, `${esc} cancels.`);
+          break;
+        case "replace-source":
+          setPrompt("Select the source row to multiply.", `The target row will keep coefficient 1. ${esc} cancels.`);
+          break;
+        case "replace-target":
+          setPrompt(`Select a target row different from row ${interaction.source + 1}.`, `${esc} returns to source-row selection.`);
+          break;
+        case "replace-factor":
+          setPrompt(`Enter c for cR${interaction.source + 1} + R${interaction.target + 1} → R${interaction.target + 1}.`, `<span class="kbd">Enter</span> applies it; ${esc} returns to target-row selection.`, false, true);
+          break;
+      }
+    }
+
+    function appendStrategyFeedback(feedback) {
+      if (!feedback) return;
+      const box = document.createElement("div");
+      box.className = `strategy-feedback ${feedback.kind || "caution"}`;
+      const title = document.createElement("strong");
+      title.textContent = feedback.title;
+      const detail = document.createElement("span");
+      detail.textContent = feedback.message;
+      box.append(title, detail);
+      promptLine.appendChild(box);
+    }
+
+    function appendPracticeRowInputs() {
+      const matrix = currentMatrix();
+      if (!matrix) return;
+      const target = interaction.stage === "practice-scale-row-entry" ? interaction.source : interaction.target;
+      const wrap = document.createElement("div");
+      wrap.className = "practice-row-entry-wrap";
+      const bracket = document.createElement("div");
+      bracket.className = "practice-row-bracket";
+      matrix[target].forEach((_, col) => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "row-result-input";
+        input.placeholder = "?";
+        input.setAttribute("aria-label", `New row ${target + 1}, column ${col + 1}`);
+        configureNumericInput(input, "result");
+        input.addEventListener("input", () => input.classList.remove("invalid"));
+        input.addEventListener("keydown", event => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          const inputs = [...bracket.querySelectorAll("input")];
+          const index = inputs.indexOf(input);
+          if (index < inputs.length - 1) inputs[index + 1].focus(customKeypadPreferred() ? { preventScroll: true } : undefined);
+          else checkPracticeRowEntry();
+        });
+        bracket.appendChild(input);
+      });
+      const scroller = document.createElement("div");
+      scroller.className = "practice-row-input-scroller";
+      scroller.appendChild(bracket);
+      const check = document.createElement("button");
+      check.type = "button";
+      check.className = "primary";
+      check.textContent = "Check row";
+      check.addEventListener("click", checkPracticeRowEntry);
+      wrap.append(scroller, check);
+      promptLine.appendChild(wrap);
+      requestAnimationFrame(() => {
+        const first = bracket.querySelector("input");
+        if (first) {
+          first.focus();
+          if (customKeypadPreferred()) showNumericKeypad(first);
+        }
+      });
+    }
+
+    function renderPracticePrompt() {
+      const esc = customKeypadPreferred() ? "<strong>Back</strong>" : '<span class="kbd">Esc</span>';
+      if (historyIndex < 0) {
+        setPrompt("Start a computation to begin Practice mode.", "Enter a matrix above first.");
+        return;
+      }
+
+      switch (interaction.stage) {
+        case "idle": {
+          if (isRref(currentMatrix())) {
+            setPrompt("The matrix is in reduced row echelon form.", "Choose another problem, undo a step, or review your work.");
+          } else {
+            setPrompt("Choose the next elementary row operation.", "You decide the strategy; the tool checks arithmetic and comments on the effect of each step.");
+          }
+          appendStrategyFeedback(history[historyIndex]?.practiceFeedback || null);
+          return;
+        }
+        case "scale-row":
+          setPrompt("Select the row to scale.", `${esc} cancels.`);
+          return;
+        case "scale-factor":
+          setPrompt(`Enter a nonzero factor for row ${interaction.source + 1}.`, `<span class="kbd">Enter</span> continues to the new row; ${esc} returns to row selection.`, false, true);
+          return;
+        case "practice-scale-row-entry":
+          setPrompt(`Enter every entry of the new row ${interaction.source + 1}.`, `Scale every entry by ${rationalText(interaction.factor)}. ${esc} returns to the factor.`);
+          appendPracticeRowInputs();
+          return;
+        case "swap-first":
+          setPrompt("Select the first row to interchange.", `${esc} cancels.`);
+          return;
+        case "swap-second":
+          setPrompt(`Select a different row to interchange with row ${interaction.source + 1}.`, `${esc} returns to first-row selection.`);
+          return;
+        case "replace-source":
+          setPrompt("Select the source row to multiply.", `The target row keeps coefficient 1. ${esc} cancels.`);
+          return;
+        case "replace-target":
+          setPrompt(`Select a target row different from row ${interaction.source + 1}.`, `${esc} returns to source-row selection.`);
+          return;
+        case "replace-factor":
+          setPrompt(`Enter c for cR${interaction.source + 1} + R${interaction.target + 1} → R${interaction.target + 1}.`, `<span class="kbd">Enter</span> continues to the new row; ${esc} returns to target-row selection.`, false, true);
+          return;
+        case "practice-replace-row-entry":
+          setPrompt(`Enter every entry of the new row ${interaction.target + 1}.`, `Compute ${rationalText(interaction.factor)}R${interaction.source + 1} + R${interaction.target + 1} entry by entry. ${esc} returns to the factor.`);
+          appendPracticeRowInputs();
+          return;
+      }
+    }
+
+    function renderGuidedPrompt() {
+      const esc = customKeypadPreferred() ? "<strong>Back</strong>" : '<span class="kbd">Esc</span>';
+      if (historyIndex < 0 || !guideState) {
+        setPrompt("Start a computation to begin guided mode.", "Enter a matrix above first.");
+        return;
+      }
+
+      if (interaction.stage === "guided-scale-factor") {
+        const pivot = activePivot();
+        setPrompt(`Enter the factor that makes the pivot in row ${pivot.row + 1} equal to 1.`, `<span class="kbd">Enter</span> checks the factor; ${esc} cancels.`, false, true);
+        return;
+      }
+      if (interaction.stage === "guided-swap-first") {
+        setPrompt("Choose the first row to interchange.", `Choose the two rows needed to move the selected pivot into position. ${esc} cancels.`);
+        return;
+      }
+      if (interaction.stage === "guided-swap-second") {
+        setPrompt(`Choose a second row to interchange with row ${interaction.source + 1}.`, `The completed pair will be checked. ${esc} returns to first-row selection.`);
+        return;
+      }
+      if (interaction.stage === "guided-replace-source") {
+        setPrompt("Choose the source row for the row replacement.", `The current pivot row must be the source. ${esc} cancels.`);
+        return;
+      }
+      if (interaction.stage === "guided-replace-target") {
+        setPrompt(`Choose the target row for cR${interaction.source + 1} + Rtarget → Rtarget.`, `Any row may be selected; an invalid choice will be explained. ${esc} returns to source-row selection.`);
+        return;
+      }
+      if (interaction.stage === "guided-replace-factor") {
+        const pivot = activePivot();
+        setPrompt(`Enter c so that cR${interaction.source + 1} + R${interaction.target + 1} → R${interaction.target + 1} makes the entry in row ${interaction.target + 1}, column ${pivot.col + 1} equal to 0.`, `<span class="kbd">Enter</span> checks the factor; ${esc} returns to target-row selection.`, false, true);
+        return;
+      }
+
+      switch (guideState.stage) {
+        case "choose-pivot":
+          setPrompt(`Choose a nonzero pivot from the highlighted part of column ${guideState.pivotCol + 1}.`, "Zero entries and rows outside the active submatrix cannot be chosen.");
+          break;
+        case "swap-pivot":
+          setPrompt(`Move the chosen pivot from row ${guideState.selectedRow + 1} into row ${guideState.pivotRow + 1}.`, "Choose Row interchange, then select both rows just as in free mode.");
+          break;
+        case "forward-pivot-ready":
+          setPrompt(`The pivot is positioned in row ${guideState.pivotRow + 1}. You may scale it to 1 now or continue without scaling.`, "Scaling early is optional during the forward phase.");
+          appendPromptButton("Continue without scaling", continueGuidedStep, true);
+          break;
+        case "forward-eliminate": {
+          const pivot = activePivot();
+          const count = forwardTargets(currentMatrix(), guideState).length;
+          const scalingNote = isOne(currentMatrix()[pivot.row][pivot.col])
+            ? "The pivot is already 1."
+            : "You may still scale the pivot to 1 before continuing.";
+          setPrompt(`Clear the ${count} remaining nonzero entr${count === 1 ? "y" : "ies"} below the pivot in column ${pivot.col + 1}.`, scalingNote);
+          break;
+        }
+        case "forward-complete":
+          setPrompt("Forward phase complete: the matrix is in echelon form.", "The backward phase will make each pivot 1 and clear entries above it.");
+          appendPromptButton("Begin backward phase", continueGuidedStep, true);
+          break;
+        case "backward-scale": {
+          const pivot = activePivot();
+          setPrompt(`Scale row ${pivot.row + 1} so its pivot in column ${pivot.col + 1} becomes 1.`, "Only the reciprocal of the current pivot will be accepted.");
+          break;
+        }
+        case "backward-eliminate": {
+          const pivot = activePivot();
+          const count = backwardTargets(currentMatrix(), guideState).length;
+          setPrompt(`Clear the ${count} remaining nonzero entr${count === 1 ? "y" : "ies"} above the pivot in column ${pivot.col + 1}.`, "Use the pivot row as the source row.");
+          break;
+        }
+        case "complete":
+          setPrompt("Backward phase complete: the matrix is in reduced row echelon form.", "You may undo steps, export the work, or start another matrix.");
+          break;
+      }
+    }
+
+    function startScale() {
+      if (!currentMatrix()) return;
+      if (mode === "guided") {
+        startGuidedScale();
+        return;
+      }
+      interaction = { stage: "scale-row", source: null, target: null, factor: null };
+      setActiveOperationButton(scaleBtn);
+      renderHistory();
+    }
+
+    function startSwap() {
+      if (!currentMatrix()) return;
+      if (mode === "guided") {
+        startGuidedSwap();
+        return;
+      }
+      interaction = { stage: "swap-first", source: null, target: null, factor: null };
+      setActiveOperationButton(swapBtn);
+      renderHistory();
+    }
+
+    function startReplace() {
+      if (!currentMatrix()) return;
+      if (mode === "guided") {
+        startGuidedReplacement();
+        return;
+      }
+      interaction = { stage: "replace-source", source: null, target: null, factor: null };
+      setActiveOperationButton(replaceBtn);
+      renderHistory();
+    }
+
+    function cancelInteraction() {
+      interaction = idleInteraction();
+      setActiveOperationButton(null);
+      renderHistory();
+    }
+
+    function handleOpenRowClick(rowIndex) {
+      switch (interaction.stage) {
+        case "scale-row":
+          haptic("choice");
+          interaction.source = rowIndex;
+          interaction.stage = "scale-factor";
+          renderHistory();
+          break;
+        case "swap-first":
+          haptic("choice");
+          interaction.source = rowIndex;
+          interaction.stage = "swap-second";
+          renderHistory();
+          break;
+        case "swap-second":
+          if (rowIndex === interaction.source) {
+            haptic("error");
+            shake();
+            setPrompt("Choose a different second row.", '<span class="kbd">Esc</span> cancels.', true);
+            return;
+          }
+          applyScalingOrSwap("swap", interaction.source, null, rowIndex);
+          break;
+        case "replace-source":
+          haptic("choice");
+          interaction.source = rowIndex;
+          interaction.stage = "replace-target";
+          renderHistory();
+          break;
+        case "replace-target":
+          if (rowIndex === interaction.source) {
+            haptic("error");
+            shake();
+            setPrompt("The source and target rows must be different.", "This prevents row replacement from secretly becoming row scaling.", true);
+            return;
+          }
+          haptic("choice");
+          interaction.target = rowIndex;
+          interaction.stage = "replace-factor";
+          renderHistory();
+          break;
+      }
+    }
+
+    function guidedOperationError(operation) {
+      if (!guideState) return;
+      const stage = guideState.stage;
+      const key = `${stage}:${operation}`;
+      let messages;
+
+      if (stage === "choose-pivot") {
+        messages = [
+          "Choose a pivot before selecting a row operation.",
+          "The algorithm first identifies a nonzero entry in the active pivot column.",
+          `Choose one of the highlighted nonzero entries in column ${guideState.pivotCol + 1}.`
+        ];
+      } else if (stage === "swap-pivot") {
+        messages = operation === "swap" ? [] : [
+          "That operation does not move the chosen pivot into its pivot position.",
+          "The pivot is in a different row, so the next operation must change the order of the rows.",
+          "Use Row interchange, then choose the two rows to exchange."
+        ];
+      } else if (stage === "forward-pivot-ready") {
+        messages = operation === "swap" ? [
+          "The pivot is already in the correct row, so an interchange is not needed.",
+          "At this point you may scale the pivot to 1 or begin clearing entries below it.",
+          "Choose Scale a row, Replace a row, or Continue without scaling."
+        ] : [
+          "That operation does not match the current pivot step.",
+          "The pivot is positioned; decide whether to scale it or begin elimination.",
+          "Scale the pivot, or use row replacement to clear entries below it."
+        ];
+      } else if (stage === "forward-eliminate") {
+        messages = operation === "swap" ? [
+          "The current pivot is already positioned; interchanging rows would not advance this elimination step.",
+          "The present goal is to clear nonzero entries below the pivot.",
+          "Use row replacement, or scale the pivot first if it is not 1."
+        ] : [
+          "That operation is not needed for the current elimination step.",
+          "The goal is to clear entries below the current pivot.",
+          "Choose Replace a row and use the pivot row as the source."
+        ];
+      } else if (stage === "forward-complete") {
+        messages = [
+          "The forward phase is complete; begin the backward phase before choosing another operation.",
+          "The matrix is already in echelon form.",
+          "Choose Begin backward phase in the prompt below."
+        ];
+      } else if (stage === "backward-scale") {
+        messages = [
+          "The current pivot must be made equal to 1 before clearing entries above it.",
+          "Row interchange or replacement will not normalize this pivot.",
+          "Choose Scale a row and enter the reciprocal of the pivot."
+        ];
+      } else if (stage === "backward-eliminate") {
+        messages = operation === "replace" ? [] : [
+          "That operation does not match the current backward-elimination goal.",
+          "The current pivot is already 1; now clear the nonzero entries above it.",
+          "Choose Replace a row and use the pivot row as the source."
+        ];
+      } else {
+        messages = ["No further row operation is needed."];
+      }
+
+      if (!messages.length) return;
+      const count = (guidedErrorCounts[key] || 0) + 1;
+      guidedErrorCounts[key] = count;
+      showGuidedChoiceError(messages[Math.min(count - 1, messages.length - 1)]);
+    }
+
+    function startGuidedScale() {
+      if (!guideState) return;
+      const allowed = ["forward-pivot-ready", "forward-eliminate", "backward-scale"].includes(guideState.stage);
+      const pivot = activePivot();
+      if (!allowed || !pivot) {
+        guidedOperationError("scale");
+        return;
+      }
+      if (isOne(currentMatrix()[pivot.row][pivot.col])) {
+        guidedOperationError("scale");
+        return;
+      }
+      interaction = { stage: "guided-scale-factor", source: pivot.row, target: null, factor: null, attempts: 0 };
+      setActiveOperationButton(scaleBtn);
+      renderHistory();
+    }
+
+    function startGuidedSwap() {
+      if (!guideState || guideState.stage !== "swap-pivot") {
+        guidedOperationError("swap");
+        return;
+      }
+      interaction = { stage: "guided-swap-first", source: null, target: null, factor: null, attempts: 0 };
+      setActiveOperationButton(swapBtn);
+      renderHistory();
+    }
+
+    function startGuidedReplacement() {
+      if (!guideState) return;
+      if (guideState.stage === "forward-pivot-ready") {
+        const next = cloneGuide(guideState);
+        next.stage = "forward-eliminate";
+        guideState = normalizeForward(currentMatrix(), next);
+        if (guideState.stage !== "forward-eliminate") {
+          interaction = idleInteraction();
+          renderHistory();
+          return;
+        }
+      }
+      if (!["forward-eliminate", "backward-eliminate"].includes(guideState.stage)) {
+        guidedOperationError("replace");
+        return;
+      }
+      const pivot = activePivot();
+      if (!pivot || guidedEligibleTargets().length === 0) {
+        guidedOperationError("replace");
+        return;
+      }
+      interaction = { stage: "guided-replace-source", source: null, target: null, factor: null, attempts: 0 };
+      setActiveOperationButton(replaceBtn);
+      renderHistory();
+    }
+
+    function showGuidedChoiceError(messageText) {
+      const old = promptLine.querySelector(".error-text");
+      if (old) old.remove();
+      const message = document.createElement("span");
+      message.className = "error-text";
+      message.textContent = messageText;
+      promptLine.appendChild(message);
+      haptic("error");
+      shake();
+    }
+
+    function chooseGuidedSource(rowIndex) {
+      if (interaction.stage !== "guided-replace-source") return;
+      const pivot = activePivot();
+      if (!pivot) return;
+      if (rowIndex !== pivot.row) {
+        interaction.attempts = (interaction.attempts || 0) + 1;
+        const messages = [
+          "That row is not the source needed for the current elimination step.",
+          `The source row must contain the active pivot in column ${pivot.col + 1}.`,
+          `Use R${pivot.row + 1}, the current pivot row, as the source.`
+        ];
+        showGuidedChoiceError(messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
+        return;
+      }
+      haptic("choice");
+      interaction.source = rowIndex;
+      interaction.attempts = 0;
+      interaction.stage = "guided-replace-target";
+      renderHistory();
+    }
+
+    function chooseGuidedTarget(rowIndex) {
+      if (interaction.stage !== "guided-replace-target") return;
+      const pivot = activePivot();
+      const matrix = currentMatrix();
+      if (!pivot || !matrix) return;
+
+      if (rowIndex === interaction.source) {
+        showGuidedChoiceError("The source and target rows must be different.");
+        return;
+      }
+
+      if (guideState.stage === "forward-eliminate" && rowIndex < pivot.row) {
+        showGuidedChoiceError("This row is above the pivot. During the forward phase, clear entries below the pivot.");
+        return;
+      }
+      if (guideState.stage === "backward-eliminate" && rowIndex > pivot.row) {
+        showGuidedChoiceError("This row is below the pivot. During the backward phase, clear entries above the pivot.");
+        return;
+      }
+
+      if (isZero(matrix[rowIndex][pivot.col])) {
+        showGuidedChoiceError(`The entry in row ${rowIndex + 1}, column ${pivot.col + 1} is already zero, so no replacement is needed.`);
+        return;
+      }
+
+      haptic("choice");
+      interaction.target = rowIndex;
+      interaction.attempts = 0;
+      interaction.stage = "guided-replace-factor";
+      renderHistory();
+    }
+
+    function chooseGuidedSwapRow(rowIndex) {
+      if (interaction.stage === "guided-swap-first") {
+        haptic("choice");
+        interaction.source = rowIndex;
+        interaction.stage = "guided-swap-second";
+        renderHistory();
+        return;
+      }
+      if (interaction.stage !== "guided-swap-second") return;
+
+      if (rowIndex === interaction.source) {
+        showGuidedChoiceError("The two interchanged rows must be different.");
+        return;
+      }
+
+      const required = new Set([guideState.selectedRow, guideState.pivotRow]);
+      const firstIsRequired = required.has(interaction.source);
+      const secondIsRequired = required.has(rowIndex);
+
+      if (!firstIsRequired || !secondIsRequired) {
+        const key = "swap-pair";
+        const count = (guidedErrorCounts[key] || 0) + 1;
+        guidedErrorCounts[key] = count;
+        const messages = [
+          `That pair does not move the chosen pivot into row ${guideState.pivotRow + 1}.`,
+          "One row must contain the chosen pivot, and the other must be the next pivot row.",
+          `Interchange R${guideState.selectedRow + 1} and R${guideState.pivotRow + 1}.`
+        ];
+        interaction = { stage: "guided-swap-first", source: null, target: null, factor: null, attempts: 0 };
+        renderHistory();
+        showGuidedChoiceError(messages[Math.min(count - 1, messages.length - 1)]);
+        return;
+      }
+
+      applyGuidedSwap(interaction.source, rowIndex);
+    }
+
+    function applyGuidedSwap(first, second) {
+      if (!guideState || guideState.stage !== "swap-pivot") return;
+      const required = new Set([guideState.selectedRow, guideState.pivotRow]);
+      if (first === second || !required.has(first) || !required.has(second)) return;
+      const matrix = cloneMatrix(currentMatrix());
+      [matrix[first], matrix[second]] = [matrix[second], matrix[first]];
+      const nextGuide = afterPivotPositioned(matrix, guideState);
+      pushHistory(
+        matrix,
+        `R<sub>${first + 1}</sub> &harr; R<sub>${second + 1}</sub>`,
+        `R_{${first + 1}} \\leftrightarrow R_{${second + 1}}`,
+        nextGuide
+      );
+    }
+
+    function continueGuidedStep() {
+      if (!guideState) return;
+      if (guideState.stage === "forward-pivot-ready") {
+        const next = cloneGuide(guideState);
+        next.stage = "forward-eliminate";
+        guideState = normalizeForward(currentMatrix(), next);
+      } else if (guideState.stage === "forward-complete") {
+        const next = cloneGuide(guideState);
+        next.phase = "backward";
+        guideState = normalizeBackward(currentMatrix(), next);
+      }
+      interaction = idleInteraction();
+      guidedErrorCounts = {};
+      setActiveOperationButton(null);
+      renderHistory();
+      if (guideState?.stage === "complete") haptic("complete");
+    }
+
+    function handleFactorKeydown(event) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      const input = event.currentTarget;
+      try {
+        const factor = parseRational(input.value);
+        if (isZero(factor)) throw new Error("The factor must be nonzero.");
+
+        if (mode === "guided") {
+          handleGuidedFactor(factor);
+          return;
+        }
+
+        if (mode === "practice") {
+          interaction.factor = factor;
+          interaction.attempts = 0;
+          if (interaction.stage === "scale-factor") interaction.stage = "practice-scale-row-entry";
+          else if (interaction.stage === "replace-factor") interaction.stage = "practice-replace-row-entry";
+          renderHistory();
+          return;
+        }
+
+        if (interaction.stage === "scale-factor") {
+          applyScalingOrSwap("scale", interaction.source, factor, null);
+        } else if (interaction.stage === "replace-factor") {
+          applyScalingOrSwap("replace", interaction.source, factor, interaction.target);
+        }
+      } catch (error) {
+        showFactorError(input, error.message);
+      }
+    }
+
+    function expectedPracticeRow() {
+      const matrix = currentMatrix();
+      if (!matrix || !interaction.factor) return null;
+      if (interaction.stage === "practice-scale-row-entry") {
+        return matrix[interaction.source].map(value => mulFrac(interaction.factor, value));
+      }
+      if (interaction.stage === "practice-replace-row-entry") {
+        return matrix[interaction.target].map((value, col) =>
+          addFrac(mulFrac(interaction.factor, matrix[interaction.source][col]), value)
+        );
+      }
+      return null;
+    }
+
+    function practiceEntryExpression(col) {
+      const matrix = currentMatrix();
+      const factor = rationalText(interaction.factor);
+      if (interaction.stage === "practice-scale-row-entry") {
+        return `${factor}(${rationalText(matrix[interaction.source][col])})`;
+      }
+      return `${factor}(${rationalText(matrix[interaction.source][col])}) + ${rationalText(matrix[interaction.target][col])}`;
+    }
+
+    function checkPracticeRowEntry() {
+      if (mode !== "practice") return;
+      const expected = expectedPracticeRow();
+      if (!expected) return;
+      const inputs = [...promptLine.querySelectorAll(".row-result-input")];
+      if (inputs.length !== expected.length) return;
+      const proposed = [];
+      let syntaxError = false;
+      inputs.forEach(input => {
+        try {
+          proposed.push(parseRational(input.value));
+          input.classList.remove("invalid");
+        } catch {
+          proposed.push(null);
+          input.classList.add("invalid");
+          syntaxError = true;
+        }
+      });
+      if (syntaxError) {
+        showPracticeRowError("Correct the highlighted entries before checking the arithmetic.");
+        return;
+      }
+
+      const wrong = proposed.map((value, col) => !equalFrac(value, expected[col]));
+      if (wrong.some(Boolean)) {
+        interaction.attempts = (interaction.attempts || 0) + 1;
+        const firstWrong = wrong.indexOf(true);
+        inputs.forEach((input, col) => input.classList.toggle("invalid", interaction.attempts >= 3 && wrong[col]));
+        let message;
+        if (interaction.attempts === 1) {
+          message = "The proposed row is not correct. Check each entry using the same row operation.";
+        } else if (interaction.attempts === 2) {
+          message = "Recalculate the entire row—not only the entry you intended to eliminate or normalize.";
+        } else if (interaction.attempts === 3) {
+          message = `Recheck entry ${firstWrong + 1}: compute ${practiceEntryExpression(firstWrong)}.`;
+        } else {
+          message = `Entry ${firstWrong + 1} should be ${rationalText(expected[firstWrong])}, since ${practiceEntryExpression(firstWrong)} = ${rationalText(expected[firstWrong])}.`;
+        }
+        showPracticeRowError(message, inputs[firstWrong]);
+        return;
+      }
+
+      const before = cloneMatrix(currentMatrix());
+      const nextMatrix = cloneMatrix(before);
+      const kind = interaction.stage === "practice-scale-row-entry" ? "scale" : "replace";
+      const target = kind === "scale" ? interaction.source : interaction.target;
+      nextMatrix[target] = proposed;
+      const feedback = classifyPracticeOperation(before, nextMatrix, {
+        kind,
+        source: interaction.source,
+        target: interaction.target,
+        factor: interaction.factor
+      });
+      const source = interaction.source + 1;
+      if (kind === "scale") {
+        pushHistory(
+          nextMatrix,
+          `${factorCoefficientHTML(interaction.factor, source)} &rarr; R<sub>${source}</sub>`,
+          `${factorCoefficientLatex(interaction.factor, source)} \\rightarrow R_{${source}}`,
+          null,
+          feedback
+        );
+      } else {
+        const targetNumber = interaction.target + 1;
+        pushHistory(
+          nextMatrix,
+          `${factorCoefficientHTML(interaction.factor, source)} + R<sub>${targetNumber}</sub> &rarr; R<sub>${targetNumber}</sub>`,
+          `${factorCoefficientLatex(interaction.factor, source)} + R_{${targetNumber}} \\rightarrow R_{${targetNumber}}`,
+          null,
+          feedback
+        );
+      }
+    }
+
+    function showPracticeRowError(messageText, focusInput = null) {
+      const old = promptLine.querySelector(".error-text");
+      if (old) old.remove();
+      const message = document.createElement("span");
+      message.className = "error-text";
+      message.textContent = messageText;
+      promptLine.appendChild(message);
+      haptic("error");
+      shake();
+      (focusInput || promptLine.querySelector(".row-result-input.invalid"))?.focus(customKeypadPreferred() ? { preventScroll: true } : undefined);
+    }
+
+    function handleGuidedFactor(factor) {
+      const input = document.getElementById("factorInput");
+      const matrix = currentMatrix();
+      const pivot = activePivot();
+      if (!input || !pivot) return;
+
+      if (interaction.stage === "guided-scale-factor") {
+        const expected = divFrac(frac(1n), matrix[pivot.row][pivot.col]);
+        if (!equalFrac(factor, expected)) {
+          interaction.attempts = (interaction.attempts || 0) + 1;
+          const pivotValue = rationalText(matrix[pivot.row][pivot.col]);
+          const messages = [
+            "That factor does not make the pivot equal to 1. Try again.",
+            `Your factor c must satisfy c(${pivotValue}) = 1.`,
+            `Use the reciprocal of ${pivotValue}: ${rationalText(expected)}.`
+          ];
+          showFactorError(input, messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
+          return;
+        }
+        const nextMatrix = cloneMatrix(matrix);
+        nextMatrix[pivot.row] = nextMatrix[pivot.row].map(value => mulFrac(factor, value));
+        let nextGuide = cloneGuide(guideState);
+        if (nextGuide.phase === "backward") nextGuide = normalizeBackward(nextMatrix, nextGuide);
+        else {
+          nextGuide.stage = "forward-eliminate";
+          nextGuide = normalizeForward(nextMatrix, nextGuide);
+        }
+        const row = pivot.row + 1;
+        pushHistory(
+          nextMatrix,
+          `${factorCoefficientHTML(factor, row)} &rarr; R<sub>${row}</sub>`,
+          `${factorCoefficientLatex(factor, row)} \\rightarrow R_{${row}}`,
+          nextGuide
+        );
+        return;
+      }
+
+      if (interaction.stage === "guided-replace-factor") {
+        const source = interaction.source;
+        const target = interaction.target;
+        const expected = negFrac(divFrac(matrix[target][pivot.col], matrix[source][pivot.col]));
+        if (!equalFrac(factor, expected)) {
+          interaction.attempts = (interaction.attempts || 0) + 1;
+          const sourceValue = rationalText(matrix[source][pivot.col]);
+          const targetValue = rationalText(matrix[target][pivot.col]);
+          const messages = [
+            "That factor does not clear the selected entry. Try again.",
+            `Your factor c must satisfy c(${sourceValue}) + ${targetValue} = 0.`,
+            `Solve c = -(${targetValue})/(${sourceValue}), giving ${rationalText(expected)}.`
+          ];
+          showFactorError(input, messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
+          return;
+        }
+        const nextMatrix = cloneMatrix(matrix);
+        nextMatrix[target] = nextMatrix[target].map((value, col) => addFrac(mulFrac(factor, nextMatrix[source][col]), value));
+        let nextGuide = cloneGuide(guideState);
+        if (nextGuide.phase === "backward") nextGuide = normalizeBackward(nextMatrix, nextGuide);
+        else nextGuide = normalizeForward(nextMatrix, nextGuide);
+        const s = source + 1;
+        const t = target + 1;
+        pushHistory(
+          nextMatrix,
+          `${factorCoefficientHTML(factor, s)} + R<sub>${t}</sub> &rarr; R<sub>${t}</sub>`,
+          `${factorCoefficientLatex(factor, s)} + R_{${t}} \\rightarrow R_{${t}}`,
+          nextGuide
+        );
+      }
+    }
+
+    function showFactorError(input, messageText) {
+      input.classList.add("invalid");
+      const old = promptLine.querySelector(".error-text");
+      if (old) old.remove();
+      const message = document.createElement("span");
+      message.className = "error-text";
+      message.textContent = messageText;
+      promptLine.appendChild(message);
+      haptic("error");
+      shake();
+      input.focus(customKeypadPreferred() ? { preventScroll: true } : undefined);
+      input.select();
+    }
+
+    function factorCoefficientHTML(factor, rowNumber, includePlus = false) {
+      const prefix = includePlus ? " + " : "";
+      if (factor.d === 1n && factor.n === 1n) return `${prefix}R<sub>${rowNumber}</sub>`;
+      if (factor.d === 1n && factor.n === -1n) return `${includePlus ? " − " : "−"}R<sub>${rowNumber}</sub>`;
+      return `${prefix}${rationalText(factor)}R<sub>${rowNumber}</sub>`;
+    }
+
+    function factorCoefficientLatex(factor, rowNumber) {
+      if (factor.d === 1n && factor.n === 1n) return `R_{${rowNumber}}`;
+      if (factor.d === 1n && factor.n === -1n) return `-R_{${rowNumber}}`;
+      return `${rationalLatex(factor)}R_{${rowNumber}}`;
+    }
+
+    function firstNonzeroColumn(row) {
+      for (let col = 0; col < row.length; col++) if (!isZero(row[col])) return col;
+      return null;
+    }
+
+    function matricesEqual(left, right) {
+      return left.length === right.length && left.every((row, r) =>
+        row.length === right[r].length && row.every((value, c) => equalFrac(value, right[r][c]))
+      );
+    }
+
+    function analyzeMatrixStructure(matrix) {
+      const leads = matrix.map(firstNonzeroColumn);
+      let previousLead = -1;
+      let seenZeroRow = false;
+      let echelon = true;
+      let protectedPrefix = 0;
+      let prefixOpen = true;
+      const pivots = [];
+
+      for (let row = 0; row < matrix.length; row++) {
+        const lead = leads[row];
+        if (lead === null) {
+          seenZeroRow = true;
+          prefixOpen = false;
+          continue;
+        }
+        const leadOrderGood = !seenZeroRow && lead > previousLead;
+        let belowClear = true;
+        for (let lower = row + 1; lower < matrix.length; lower++) {
+          if (!isZero(matrix[lower][lead])) { belowClear = false; break; }
+        }
+        if (!leadOrderGood || !belowClear) echelon = false;
+        if (prefixOpen && leadOrderGood && belowClear) protectedPrefix++;
+        else prefixOpen = false;
+        previousLead = lead;
+        pivots.push({ row, col: lead });
+      }
+
+      let reducedCount = 0;
+      if (echelon) {
+        for (let i = pivots.length - 1; i >= 0; i--) {
+          const pivot = pivots[i];
+          let reduced = isOne(matrix[pivot.row][pivot.col]);
+          for (let row = 0; row < matrix.length && reduced; row++) {
+            if (row !== pivot.row && !isZero(matrix[row][pivot.col])) reduced = false;
+          }
+          if (!reduced) break;
+          reducedCount++;
+        }
+      }
+
+      let fractionCount = 0;
+      let maxDenominator = 1n;
+      let maxNumerator = 0n;
+      for (const row of matrix) {
+        for (const value of row) {
+          if (value.d !== 1n) fractionCount++;
+          if (value.d > maxDenominator) maxDenominator = value.d;
+          const numerator = absBigInt(value.n);
+          if (numerator > maxNumerator) maxNumerator = numerator;
+        }
+      }
+
+      return {
+        leads,
+        pivots,
+        echelon,
+        protectedPrefix,
+        reducedCount,
+        rref: echelon && reducedCount === pivots.length,
+        fractionCount,
+        maxDenominator,
+        maxNumerator
+      };
+    }
+
+    function isRref(matrix) {
+      return analyzeMatrixStructure(matrix).rref;
+    }
+
+    function classifyPracticeOperation(before, after, operation) {
+      const beforeInfo = analyzeMatrixStructure(before);
+      const afterInfo = analyzeMatrixStructure(after);
+
+      if (matricesEqual(before, after)) {
+        return {
+          kind: "caution",
+          title: "Correct but unnecessary",
+          message: "This is a valid elementary row operation, but it leaves the matrix unchanged."
+        };
+      }
+
+      if (afterInfo.rref && !beforeInfo.rref) {
+        return {
+          kind: "efficient",
+          title: "Correct and complete",
+          message: "This step finishes the reduction: the matrix is now in reduced row echelon form."
+        };
+      }
+
+      if (
+        afterInfo.protectedPrefix > beforeInfo.protectedPrefix ||
+        (!beforeInfo.echelon && afterInfo.echelon) ||
+        (beforeInfo.echelon && afterInfo.reducedCount > beforeInfo.reducedCount)
+      ) {
+        return {
+          kind: "efficient",
+          title: "Correct and productive",
+          message: "This valid row operation advances the matrix toward echelon or reduced echelon form."
+        };
+      }
+
+      if (
+        afterInfo.protectedPrefix < beforeInfo.protectedPrefix ||
+        (beforeInfo.echelon && !afterInfo.echelon) ||
+        (afterInfo.reducedCount < beforeInfo.reducedCount)
+      ) {
+        return {
+          kind: "counterproductive",
+          title: "Correct, but it undoes progress",
+          message: "The row operation is valid, but it disrupts part of the echelon or reduced structure already established."
+        };
+      }
+
+      if (operation.kind === "scale") {
+        const lead = firstNonzeroColumn(before[operation.source]);
+        if (lead !== null && !isOne(before[operation.source][lead]) && isOne(after[operation.source][lead])) {
+          return {
+            kind: "efficient",
+            title: "Correct and convenient",
+            message: "This normalizes a leading entry to 1, which usually makes later elimination easier."
+          };
+        }
+      }
+
+      if (
+        afterInfo.fractionCount > beforeInfo.fractionCount ||
+        afterInfo.maxDenominator > beforeInfo.maxDenominator
+      ) {
+        return {
+          kind: "caution",
+          title: "Correct but potentially inconvenient",
+          message: "This step is valid, but it introduces additional fractions. Another valid choice may keep the arithmetic simpler."
+        };
+      }
+
+      if (afterInfo.maxNumerator > 9n && afterInfo.maxNumerator > beforeInfo.maxNumerator * 2n) {
+        return {
+          kind: "caution",
+          title: "Correct but potentially inconvenient",
+          message: "This step is valid, but it makes the numbers substantially larger without clearly advancing the current structure."
+        };
+      }
+
+      return {
+        kind: "caution",
+        title: "Correct but not clearly productive",
+        message: "This is a valid elementary row operation, but it does not visibly advance the matrix toward echelon form."
+      };
+    }
+
+    function pushHistory(matrix, opHTML, opLatex, nextGuide = null, practiceFeedback = null) {
+      const guideBefore = mode === "guided" ? cloneGuide(guideState) : null;
+      history = history.slice(0, historyIndex + 1);
+      if (mode === "guided") guideState = cloneGuide(nextGuide);
+      history.push({
+        matrix,
+        opHTML,
+        opLatex,
+        guideBefore,
+        guideAfter: mode === "guided" ? cloneGuide(guideState) : null,
+        practiceFeedback: mode === "practice" ? practiceFeedback : null
+      });
+      historyIndex++;
+      interaction = idleInteraction();
+      if (mode === "guided") guidedErrorCounts = {};
+      setActiveOperationButton(null);
+      renderHistory(true);
+      if (mode === "guided" && guideState?.stage === "complete") { haptic("complete"); celebrateCompletion(); }
+      else if (mode === "practice" && isRref(matrix)) { haptic("complete"); celebrateCompletion(); }
+      else haptic("success");
+    }
+
+    function applyScalingOrSwap(kind, source, factor, target) {
+      const before = cloneMatrix(currentMatrix());
+      const matrix = cloneMatrix(before);
+      if (kind === "scale") {
+        matrix[source] = matrix[source].map(value => mulFrac(factor, value));
+        const row = source + 1;
+        const feedback = mode === "practice" ? classifyPracticeOperation(before, matrix, { kind, source, target, factor }) : null;
+        pushHistory(
+          matrix,
+          `${factorCoefficientHTML(factor, row)} &rarr; R<sub>${row}</sub>`,
+          `${factorCoefficientLatex(factor, row)} \\rightarrow R_{${row}}`,
+          null,
+          feedback
+        );
+      } else if (kind === "swap") {
+        [matrix[source], matrix[target]] = [matrix[target], matrix[source]];
+        const a = source + 1;
+        const b = target + 1;
+        const feedback = mode === "practice" ? classifyPracticeOperation(before, matrix, { kind, source, target, factor }) : null;
+        pushHistory(matrix, `R<sub>${a}</sub> &harr; R<sub>${b}</sub>`, `R_{${a}} \\leftrightarrow R_{${b}}`, null, feedback);
+      } else if (kind === "replace") {
+        matrix[target] = matrix[target].map((value, col) => addFrac(mulFrac(factor, matrix[source][col]), value));
+        const s = source + 1;
+        const t = target + 1;
+        const feedback = mode === "practice" ? classifyPracticeOperation(before, matrix, { kind, source, target, factor }) : null;
+        pushHistory(
+          matrix,
+          `${factorCoefficientHTML(factor, s)} + R<sub>${t}</sub> &rarr; R<sub>${t}</sub>`,
+          `${factorCoefficientLatex(factor, s)} + R_{${t}} \\rightarrow R_{${t}}`,
+          null,
+          feedback
+        );
+      }
+    }
+
+    function undo() {
+      if (historyIndex <= 0) return;
+      const undone = history[historyIndex];
+      historyIndex--;
+      interaction = idleInteraction();
+      guideState = mode === "guided" ? cloneGuide(undone.guideBefore) : null;
+      setActiveOperationButton(null);
+      renderHistory(true);
+    }
+
+    function redo() {
+      if (historyIndex >= history.length - 1) return;
+      historyIndex++;
+      interaction = idleInteraction();
+      guideState = mode === "guided" ? cloneGuide(history[historyIndex].guideAfter) : null;
+      setActiveOperationButton(null);
+      renderHistory(true);
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomNonzeroInt(min, max) {
+      let x = 0;
+      while (x === 0) x = randomInt(min, max);
+      return x;
+    }
+
+    function identityIntegerMatrix(size) {
+      return Array.from({ length: size }, (_, r) =>
+        Array.from({ length: size }, (_, c) => r === c ? 1n : 0n)
+      );
+    }
+
+    function multiplyIntegerMatrices(left, right) {
+      const rows = left.length;
+      const inner = right.length;
+      const cols = right[0].length;
+      return Array.from({ length: rows }, (_, r) =>
+        Array.from({ length: cols }, (_, c) => {
+          let sum = 0n;
+          for (let k = 0; k < inner; k++) sum += left[r][k] * right[k][c];
+          return sum;
+        })
+      );
+    }
+
+    function shuffledIndices(size) {
+      const result = Array.from({ length: size }, (_, i) => i);
+      for (let i = size - 1; i > 0; i--) {
+        const j = randomInt(0, i);
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    }
+
+    // A product of integer unitriangular matrices is unimodular.  Using fairly
+    // dense factors produces matrices with many nonzero entries while keeping
+    // the coefficients much smaller than a long sequence of arbitrary row ops.
+    function randomDenseUnimodularMatrix(size) {
+      const lower = identityIntegerMatrix(size);
+      const upper = identityIntegerMatrix(size);
+      const density = 0.82;
+
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < r; c++) {
+          const useEntry = c === 0 || Math.random() < density;
+          if (useEntry) lower[r][c] = Math.random() < 0.5 ? -1n : 1n;
+        }
+        for (let c = r + 1; c < size; c++) {
+          const useEntry = r === 0 || Math.random() < density;
+          if (useEntry) upper[r][c] = Math.random() < 0.5 ? -1n : 1n;
+        }
+      }
+
+      let matrix = multiplyIntegerMatrices(lower, upper);
+      const permutation = shuffledIndices(size);
+      matrix = permutation.map(index => matrix[index].slice());
+      for (let r = 0; r < size; r++) {
+        if (Math.random() < 0.5) matrix[r] = matrix[r].map(value => -value);
+      }
+      return matrix;
+    }
+
+    function randomRrefSeed(rows, cols, rank) {
+      const matrix = Array.from({ length: rows }, () => Array(cols).fill(0n));
+      for (let i = 0; i < rank; i++) matrix[i][i] = 1n;
+
+      // Fill most free-column entries.  This makes augmented and rectangular
+      // examples dense without changing their simple, integral RREF.
+      for (let r = 0; r < rank; r++) {
+        for (let c = rank; c < cols; c++) {
+          if (Math.random() < 0.82) {
+            matrix[r][c] = BigInt(randomNonzeroInt(-2, 2));
+          }
+        }
+      }
+      return matrix;
+    }
+
+    function integerMatrixStats(matrix, rank) {
+      let nonzero = 0;
+      let maxAbs = 0n;
+      let belowPivotNonzero = 0;
+      let zeroRows = 0;
+
+      for (let r = 0; r < matrix.length; r++) {
+        let rowNonzero = false;
+        for (let c = 0; c < matrix[r].length; c++) {
+          const value = matrix[r][c];
+          if (value !== 0n) {
+            nonzero++;
+            rowNonzero = true;
+            const abs = value < 0n ? -value : value;
+            if (abs > maxAbs) maxAbs = abs;
+          }
+          if (c < rank && r > c && value !== 0n) belowPivotNonzero++;
+        }
+        if (!rowNonzero) zeroRows++;
+      }
+
+      return { nonzero, maxAbs, belowPivotNonzero, zeroRows };
+    }
+
+    function cloneIntegerMatrix(matrix) {
+      return matrix.map(row => row.slice());
+    }
+
+    function addIntegerRow(matrix, target, source, factor) {
+      matrix[target] = matrix[target].map((value, col) => value + factor * matrix[source][col]);
+    }
+
+    function structuredUnimodularTransform(size, type) {
+      const matrix = identityIntegerMatrix(size);
+      if (size <= 1) return matrix;
+
+      // Densify while preserving the first column e_1.  Operations among lower
+      // rows and additions into row 1 keep that first column under control.
+      const steps = Math.max(10, size * 5);
+      for (let step = 0; step < steps; step++) {
+        if (Math.random() < 0.3) {
+          const source = randomInt(1, size - 1);
+          addIntegerRow(matrix, 0, source, Math.random() < 0.5 ? -1n : 1n);
+        } else if (size > 2) {
+          let source = randomInt(1, size - 1);
+          let target = randomInt(1, size - 1);
+          while (target === source) target = randomInt(1, size - 1);
+          addIntegerRow(matrix, target, source, Math.random() < 0.5 ? -1n : 1n);
+        }
+      }
+
+      if (type === "basic") {
+        for (let row = 1; row < size; row++) addIntegerRow(matrix, row, 0, Math.random() < 0.5 ? -1n : 1n);
+      } else if (type === "swap") {
+        [matrix[0], matrix[1]] = [matrix[1], matrix[0]];
+      } else if (type === "convenient") {
+        addIntegerRow(matrix, 1, 0, 1n);
+        addIntegerRow(matrix, 0, 1, 1n);
+      } else if (type === "fractions") {
+        addIntegerRow(matrix, 1, 0, 1n);
+        addIntegerRow(matrix, 0, 1, 1n);
+        addIntegerRow(matrix, 1, 0, 1n);
+        for (let row = 2; row < size; row++) addIntegerRow(matrix, row, row % 2 ? 0 : 1, 1n);
+      }
+
+      for (let row = 0; row < size; row++) {
+        if (Math.random() < 0.35) matrix[row] = matrix[row].map(value => -value);
+      }
+      return matrix;
+    }
+
+    function randomRrefSeedAt(rows, cols, rank, startCol = 0) {
+      const matrix = Array.from({ length: rows }, () => Array(cols).fill(0n));
+      for (let row = 0; row < rank; row++) matrix[row][startCol + row] = 1n;
+      const lastPivot = startCol + rank;
+      for (let row = 0; row < rank; row++) {
+        for (let col = lastPivot; col < cols; col++) {
+          if (Math.random() < 0.85) matrix[row][col] = BigInt(randomNonzeroInt(-2, 2));
+        }
+      }
+      return matrix;
+    }
+
+    function problemTypeSupported(type, rows, cols) {
+      if (["swap", "convenient", "fractions"].includes(type)) return rows >= 2 && cols >= 1;
+      if (type === "skipped") return cols >= 2;
+      return true;
+    }
+
+    function candidateMatchesProblem(candidate, type) {
+      const rows = candidate.length;
+      const cols = candidate[0].length;
+      if (type === "swap") return candidate[0][0] === 0n && candidate.slice(1).some(row => row[0] !== 0n);
+      if (type === "convenient") {
+        const top = absBigInt(candidate[0][0]);
+        return top > 1n && candidate.slice(1).some(row => absBigInt(row[0]) === 1n);
+      }
+      if (type === "fractions") {
+        const first = candidate.map(row => absBigInt(row[0])).filter(value => value !== 0n);
+        return first.length >= 2 && first.every(value => value > 1n);
+      }
+      if (type === "skipped") return candidate.every(row => row[0] === 0n);
+      if (type === "partial") return candidate[0][0] !== 0n && candidate.slice(1).every(row => row[0] === 0n);
+      if (type === "basic") return candidate[0][0] !== 0n && candidate.slice(1).some(row => row[0] !== 0n);
+      return rows > 0 && cols > 0;
+    }
+
+    function generateProblemMatrix() {
+      const rows = Number(rowCount.value);
+      const cols = Number(colCount.value);
+      let type = problemType.value;
+      const mixedTypes = ["basic", "swap", "convenient", "fractions", "skipped", "zero-rows", "partial"]
+        .filter(item => problemTypeSupported(item, rows, cols));
+      if (type === "mixed") type = mixedTypes[randomInt(0, mixedTypes.length - 1)] || "basic";
+      if (!problemTypeSupported(type, rows, cols)) type = "basic";
+
+      const fullRank = Math.min(rows, cols);
+      const magnitudeLimit = type === "challenge" ? 28n : rows <= 4 ? 15n : rows <= 6 ? 18n : 24n;
+      let best = null;
+      let bestScore = -Infinity;
+
+      for (let attempt = 0; attempt < 140; attempt++) {
+        let rank = fullRank;
+        let startCol = 0;
+        let transformType = type;
+
+        if (type === "zero-rows") rank = rows > 1 ? Math.min(rows - 1, cols) : 0;
+        else if (type === "skipped") {
+          startCol = 1;
+          rank = Math.min(rows, Math.max(0, cols - 1));
+        } else if (type === "challenge") {
+          rank = fullRank > 1 && Math.random() < 0.25 ? fullRank - 1 : fullRank;
+        }
+
+        const rref = randomRrefSeedAt(rows, cols, rank, startCol);
+        let transform;
+        if (type === "challenge" || type === "zero-rows" || type === "skipped") {
+          transform = randomDenseUnimodularMatrix(rows);
+        } else if (type === "partial") {
+          transform = structuredUnimodularTransform(rows, "partial");
+        } else {
+          transform = structuredUnimodularTransform(rows, transformType);
+        }
+        const candidate = multiplyIntegerMatrices(transform, rref);
+        const stats = integerMatrixStats(candidate, Math.min(rank, cols));
+        if (stats.maxAbs > magnitudeLimit || !candidateMatchesProblem(candidate, type)) continue;
+
+        const overNine = stats.maxAbs > 9n ? Number(stats.maxAbs - 9n) : 0;
+        let score = 11 * stats.nonzero + 15 * stats.belowPivotNonzero - Number(stats.maxAbs) - 7 * overNine;
+        if (type === "partial") score += 35 * candidate.slice(1).filter(row => row.slice(1).some(value => value !== 0n)).length;
+        if (type === "challenge") score += 8 * stats.nonzero;
+        if (type === "zero-rows") score -= 20 * stats.zeroRows; // zero rows should normally appear only after reduction
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
+        }
+      }
+
+      if (!best) {
+        const rank = type === "zero-rows" ? Math.max(0, Math.min(rows - 1, cols)) : fullRank;
+        best = multiplyIntegerMatrices(randomDenseUnimodularMatrix(rows), randomRrefSeedAt(rows, cols, rank, 0));
+      }
+
+      buildEntryGrid(best.map(row => row.map(value => value.toString())));
+      hideNumericKeypad();
+      centerEntryMatrix();
+      haptic("choice");
+    }
+
+    function matrixLatex(matrix) {
+      const rows = matrix.map(row => row.map(rationalLatex).join(" & ")).join(" \\\\\n");
+      return `\\begin{bmatrix}\n${rows}\n\\end{bmatrix}`;
+    }
+
+    function computationLatex() {
+      const visible = history.slice(0, historyIndex + 1);
+      const lines = visible.map((entry, index) => {
+        const matrix = matrixLatex(entry.matrix);
+        if (index === 0) return `A_0 &= ${matrix}`;
+        return `&\\overset{${entry.opLatex}}{\\sim} ${matrix}`;
+      });
+
+      return `\\documentclass[12pt]{article}\n` +
+        `\\usepackage{amsmath,amssymb}\n` +
+        `\\usepackage[margin=1in]{geometry}\n` +
+        `\\begin{document}\n` +
+        `\\[\n\\begin{aligned}\n${lines.join(" \\\\\n")}\n\\end{aligned}\n\\]\n` +
+        `\\end{document}\n`;
+    }
+
+    function downloadText(filename, text, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function saveLatex() {
+      if (historyIndex < 0) return;
+      downloadText("gaussian-elimination.tex", computationLatex(), "application/x-tex;charset=utf-8");
+    }
+
+    function savePDF() {
+      if (historyIndex < 0) return;
+      window.print();
+    }
+
+    function performBackAction() {
+      if (mode === "guided") {
+        if (interaction.stage === "guided-swap-second") {
+          interaction = { stage: "guided-swap-first", source: null, target: null, factor: null };
+          renderHistory();
+          return true;
+        }
+        if (interaction.stage === "guided-replace-factor") {
+          interaction = { stage: "guided-replace-target", source: interaction.source, target: null, factor: null };
+          renderHistory();
+          return true;
+        }
+        if (interaction.stage === "guided-replace-target") {
+          interaction = { stage: "guided-replace-source", source: null, target: null, factor: null };
+          renderHistory();
+          return true;
+        }
+        if (interaction.stage !== "idle") {
+          cancelInteraction();
+          return true;
+        }
+        if (guideState?.stage === "swap-pivot") {
+          guideState = cloneGuide(guideState);
+          guideState.stage = "choose-pivot";
+          guideState.selectedRow = null;
+          renderHistory();
+          return true;
+        }
+        return false;
+      }
+
+      if (interaction.stage === "idle") return false;
+      if (mode === "practice" && interaction.stage === "practice-scale-row-entry") {
+        interaction = { stage: "scale-factor", source: interaction.source, target: null, factor: null, attempts: 0 };
+        renderHistory();
+      } else if (mode === "practice" && interaction.stage === "practice-replace-row-entry") {
+        interaction = { stage: "replace-factor", source: interaction.source, target: interaction.target, factor: null, attempts: 0 };
+        renderHistory();
+      } else if (interaction.stage === "scale-factor") {
+        interaction = { stage: "scale-row", source: null, target: null, factor: null };
+        renderHistory();
+      } else if (interaction.stage === "replace-factor") {
+        interaction = { stage: "replace-target", source: interaction.source, target: null, factor: null };
+        renderHistory();
+      } else if (interaction.stage === "replace-target") {
+        interaction = { stage: "replace-source", source: null, target: null, factor: null };
+        renderHistory();
+      } else {
+        cancelInteraction();
+      }
+      return true;
+    }
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && performBackAction()) event.preventDefault();
+    });
+
+    rowCount.addEventListener("change", () => buildEntryGrid(null, true));
+    colCount.addEventListener("change", () => buildEntryGrid(null, true));
+
+    function handleModeClick(nextMode, event) {
+      switchMode(nextMode);
+      if (event.pointerType || window.matchMedia("(pointer: coarse)").matches) event.currentTarget.blur();
+      pendingMobileScroll = null;
+    }
+
+    freeModeBtn.addEventListener("click", event => handleModeClick("free", event));
+    guidedModeBtn.addEventListener("click", event => handleModeClick("guided", event));
+    practiceModeBtn.addEventListener("click", event => handleModeClick("practice", event));
+    startBtn.addEventListener("click", startComputation);
+    randomBtn.addEventListener("click", generateProblemMatrix);
+    scaleBtn.addEventListener("click", startScale);
+    swapBtn.addEventListener("click", startSwap);
+    replaceBtn.addEventListener("click", startReplace);
+    undoBtn.addEventListener("click", undo);
+    redoBtn.addEventListener("click", redo);
+    editMatrixBtn.addEventListener("click", returnToMatrixSetup);
+    latexBtn.addEventListener("click", saveLatex);
+    pdfBtn.addEventListener("click", savePDF);
+    hideKeypadBtn.addEventListener("click", hideNumericKeypad);
+    numericKeypad.addEventListener("click", event => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      if (button === hideKeypadBtn) { hideNumericKeypad(); return; }
+      handleKeypadAction(button.dataset.action || null, button.dataset.key ?? null);
+    });
+    const handleViewportChange = () => {
+      refreshNumericInputModes();
+      centerEntryMatrix();
+      if (mobileLayout() && currentMatrix()) document.body.classList.add("computation-active");
+      updateMobileLayoutMetrics();
+      if (mobileLayout() && currentMatrix()) settleMobileWorkspace({ force: true });
+      else centerLatestMatrix();
+    };
+
+    window.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("scroll", () => updateMobileLayoutMetrics());
+    window.addEventListener("wheel", noteManualScroll, { passive: true });
+    window.addEventListener("touchmove", noteManualScroll, { passive: true });
+    historyScroll.addEventListener("scroll", event => {
+      if (event.isTrusted) noteManualScroll();
+    }, { passive: true });
+    entryWrap.addEventListener("scroll", event => {
+      if (event.isTrusted) noteManualScroll();
+    }, { passive: true });
+
+    if (typeof ResizeObserver === "function") {
+      const sheetObserver = new ResizeObserver(() => {
+        updateMobileLayoutMetrics();
+        if (mobileLayout() && currentMatrix()) settleMobileWorkspace({ force: true, focusColumn: currentFocusColumn() });
+      });
+      sheetObserver.observe(interactionPanel);
+    }
+
+    updateModeControls();
+    populateSizeSelectors();
+    buildEntryGrid([
+      ["1", "2", "-1", "3"],
+      ["2", "5", "1", "8"],
+      ["-1", "1", "2", "-1"]
+    ]);
+    renderHistory();
+    refreshNumericInputModes();
+    updateMobileLayoutMetrics();
+
+  </script>
+</body>
+</html>
