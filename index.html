@@ -666,6 +666,157 @@
       100% { opacity: 0; transform: rotate(var(--angle)) translateY(calc(-1 * var(--distance))) scale(0.2); }
     }
 
+    .tour-link {
+      border: 0;
+      padding: 0;
+      background: none;
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .tour-link:hover:not(:disabled) { background: none; color: #173aaf; }
+
+    .tour-root[hidden] { display: none; }
+
+    .tour-blocker {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+    }
+
+    .tour-spotlight {
+      position: fixed;
+      z-index: 301;
+      border-radius: 14px;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 0 200vmax rgba(15, 23, 42, 0.58);
+      pointer-events: none;
+      transition: top 320ms cubic-bezier(.2,.8,.2,1), left 320ms cubic-bezier(.2,.8,.2,1),
+        width 320ms cubic-bezier(.2,.8,.2,1), height 320ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    .tour-card {
+      position: fixed;
+      z-index: 302;
+      width: min(400px, calc(100vw - 24px));
+      max-height: calc(100dvh - 24px);
+      overflow-y: auto;
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.32);
+      padding: 18px 18px 14px;
+      transition: top 320ms cubic-bezier(.2,.8,.2,1), left 320ms cubic-bezier(.2,.8,.2,1), opacity 180ms ease;
+    }
+
+    .tour-card:focus { outline: none; }
+
+    .tour-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: -6px -8px 2px 0;
+    }
+
+    .tour-step-count {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .tour-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      letter-spacing: -0.02em;
+    }
+
+    .tour-body { line-height: 1.5; }
+    .tour-body p { margin: 0 0 8px; }
+    .tour-body ul { margin: 4px 0 8px; padding-left: 1.1em; }
+    .tour-body li { margin-bottom: 5px; }
+    .tour-body .op-notation {
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+      white-space: nowrap;
+    }
+
+    .tour-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .tour-dots { display: flex; gap: 6px; }
+
+    .tour-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--line);
+      transition: background 200ms ease, width 200ms ease;
+    }
+
+    .tour-dot.active { width: 18px; background: var(--accent); }
+
+    .tour-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+    .tour-skip {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding: 6px 8px;
+    }
+
+    .tour-skip:hover:not(:disabled) { border-color: transparent; color: var(--ink); }
+
+    .tour-demo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 4px 0 12px;
+      padding: 10px 6px;
+      border-radius: 12px;
+      background: var(--bg);
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+    }
+
+    .tour-demo .relation { width: 118px; flex-basis: 118px; }
+    .tour-demo .op-label { transition: opacity 250ms ease; }
+    .tour-demo table.matrix-table { border-spacing: 10px 4px; font-size: 1.02rem; }
+    .tour-demo table.matrix-table td { min-width: 22px; height: 24px; transition: background 250ms ease; }
+    .tour-demo tr.changed td { background: var(--selected); }
+    .tour-demo.done .matrix-bracket { color: var(--practice-good); }
+
+    .tour-demo-caption {
+      margin: -6px 0 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.86rem;
+      min-height: 1.3em;
+    }
+
+    @media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
+      .tour-card { padding: 16px 14px 12px; }
+      .tour-actions button { min-height: 42px; }
+      .tour-skip { min-height: 36px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tour-spotlight, .tour-card, .tour-dot, .tour-demo * { transition: none !important; }
+    }
+
+    @media print {
+      .tour-root { display: none !important; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .shake { animation: none; }
       * { scroll-behavior: auto !important; }
@@ -936,7 +1087,7 @@
     <header>
       <div>
         <h1>Gaussian Elimination Trainer</h1>
-        <p class="subtitle">Enter a matrix, then choose Guided, Practice, or Free mode.</p>
+        <p class="subtitle">Enter a matrix, then choose Guided, Practice, or Free mode. New here? <button id="tourBtn" class="tour-link" type="button">Take the tour</button></p>
       </div>
       <div class="mode-switch" aria-label="Mode selector">
         <button id="guidedModeBtn" class="mode-pill" type="button" autocomplete="off" aria-pressed="false">Guided mode</button>
@@ -1040,6 +1191,26 @@
 
 
   <div id="fireworksOverlay" class="fireworks-overlay" aria-hidden="true"></div>
+
+  <div id="tourRoot" class="tour-root" hidden>
+    <div class="tour-blocker"></div>
+    <div id="tourSpotlight" class="tour-spotlight"></div>
+    <div id="tourCard" class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tourTitle" tabindex="-1">
+      <div class="tour-head">
+        <p id="tourStepCount" class="tour-step-count"></p>
+        <button id="tourSkipBtn" class="tour-skip" type="button">Skip tour</button>
+      </div>
+      <h2 id="tourTitle"></h2>
+      <div id="tourBody" class="tour-body"></div>
+      <div class="tour-footer">
+        <div id="tourDots" class="tour-dots" aria-hidden="true"></div>
+        <div class="tour-actions">
+          <button id="tourBackBtn" type="button">Back</button>
+          <button id="tourNextBtn" class="primary" type="button">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     "use strict";
@@ -3664,16 +3835,326 @@
       sheetObserver.observe(interactionPanel);
     }
 
-    updateModeControls();
-    populateSizeSelectors();
-    buildEntryGrid([
+    // ------------------------------------------------------------------
+    // Welcome tour: a spotlight walkthrough shown on the first visit and
+    // available afterward from the "Take the tour" link.
+    // ------------------------------------------------------------------
+
+    const EXAMPLE_MATRIX = [
       ["1", "2", "-1", "3"],
       ["2", "5", "1", "8"],
       ["-1", "1", "2", "-1"]
-    ]);
+    ];
+    const TOUR_SEEN_KEY = "gaussian-elimination-trainer.tour-seen";
+
+    const tourRoot = document.getElementById("tourRoot");
+    const tourSpotlight = document.getElementById("tourSpotlight");
+    const tourCard = document.getElementById("tourCard");
+    const tourStepCount = document.getElementById("tourStepCount");
+    const tourTitle = document.getElementById("tourTitle");
+    const tourBody = document.getElementById("tourBody");
+    const tourDots = document.getElementById("tourDots");
+    const tourSkipBtn = document.getElementById("tourSkipBtn");
+    const tourBackBtn = document.getElementById("tourBackBtn");
+    const tourNextBtn = document.getElementById("tourNextBtn");
+    const tourBtn = document.getElementById("tourBtn");
+
+    const tourSteps = [
+      {
+        title: "Welcome to Gaussian elimination",
+        body: `<p>Gaussian elimination turns a matrix into <strong>reduced row echelon form</strong> using three simple row operations. Every step keeps the solutions of the underlying system unchanged.</p>`,
+        demo: true,
+        next: "Show me around"
+      },
+      {
+        target: () => entryWrap,
+        title: "Enter a matrix",
+        body: `<p>Type one number per box. Integers, fractions such as <span class="kbd">-7/3</span>, and decimals such as <span class="kbd">1.25</span> all work, and arithmetic is always exact.</p>
+          <p>For a system of equations, put the constants in the last column.</p>`
+      },
+      {
+        target: () => document.querySelector(".setup-toolbar"),
+        title: "…or generate one",
+        body: `<p>Pick a size, then choose a <strong>Problem</strong> type (for example <em>Row interchange required</em> or <em>Fractions likely</em>) and press <strong>Generate problem</strong> for a fresh matrix with a tidy answer.</p>`
+      },
+      {
+        target: () => document.querySelector(".mode-switch"),
+        title: "Choose how much help you want",
+        body: `<ul>
+            <li><strong>Guided:</strong> the trainer walks through the algorithm. You pick each pivot, operation, and factor, and hints get more specific if you are stuck.</li>
+            <li><strong>Practice:</strong> you choose the strategy and compute every new row yourself. The trainer checks your arithmetic and comments on each step.</li>
+            <li><strong>Free:</strong> a row-reduction calculator. You choose operations and the trainer does the arithmetic.</li>
+          </ul>`
+      },
+      {
+        target: () => startBtn,
+        title: "Start the computation",
+        body: `<p>When the matrix is ready, press <strong>Start</strong>. Switching modes afterward restarts from this same matrix.</p>`
+      },
+      {
+        target: () => document.querySelector(".operation-toolbar"),
+        title: "The three row operations",
+        body: `<ul>
+            <li><strong>Scale</strong> a row by a nonzero number: <span class="op-notation">cR<sub>i</sub> → R<sub>i</sub></span></li>
+            <li><strong>Interchange</strong> two rows: <span class="op-notation">R<sub>i</sub> ↔ R<sub>j</sub></span></li>
+            <li><strong>Replace</strong> a row by adding a multiple of another: <span class="op-notation">cR<sub>i</sub> + R<sub>j</sub> → R<sub>j</sub></span></li>
+          </ul>
+          <p>Choose an operation, then tap rows in the most recent matrix.</p>`
+      },
+      {
+        target: () => historyScroll,
+        title: "Your work, step by step",
+        body: `<p>Each matrix appears here with the operation that produced it, just as you would write it by hand. <strong>Undo</strong> and <strong>Redo</strong> are always available${mobileLayout() ? "" : ", and <strong>Save LaTeX</strong> or <strong>Save PDF</strong> exports the whole computation"}.</p>`
+      },
+      {
+        title: "Ready to try one?",
+        body: `<p>The guided example starts with a 3×4 matrix, so you can see each stage of the algorithm. You can reopen this tour from <strong>Take the tour</strong> at the top of the page.</p>`,
+        next: "Try a guided example",
+        secondary: "Explore on my own"
+      }
+    ];
+
+    // ½R1 → R1, −R1 + R2 → R2, −2R2 + R1 → R1 reduces this matrix without
+    // introducing fractions.
+    const tourDemoFrames = [
+      { matrix: [[2, 4, 6], [1, 3, 5]], op: "", changed: null, caption: "Start with any matrix…" },
+      { matrix: [[1, 2, 3], [1, 3, 5]], op: "½R<sub>1</sub> → R<sub>1</sub>", changed: 0, caption: "scale a row to make a pivot 1," },
+      { matrix: [[1, 2, 3], [0, 1, 2]], op: "−R<sub>1</sub> + R<sub>2</sub> → R<sub>2</sub>", changed: 1, caption: "clear the entries below it," },
+      { matrix: [[1, 0, -1], [0, 1, 2]], op: "−2R<sub>2</sub> + R<sub>1</sub> → R<sub>1</sub>", changed: 0, caption: "then clear the entries above: reduced row echelon form.", done: true }
+    ];
+
+    let tourIndex = -1;
+    let tourDemoTimer = 0;
+    let tourReturnFocus = null;
+    let tourPositionFrame = 0;
+
+    function markTourSeen() {
+      try { localStorage.setItem(TOUR_SEEN_KEY, "1"); } catch {}
+    }
+
+    function tourAlreadySeen() {
+      try { return localStorage.getItem(TOUR_SEEN_KEY) === "1"; } catch { return false; }
+    }
+
+    function tourOpen() { return tourIndex >= 0; }
+
+    function renderTourDemo(container, frameIndex) {
+      const frame = tourDemoFrames[frameIndex];
+      const demo = container.querySelector(".tour-demo");
+      const caption = container.querySelector(".tour-demo-caption");
+      if (!demo || !caption) return;
+      demo.innerHTML = "";
+      demo.classList.toggle("done", Boolean(frame.done));
+      const relation = document.createElement("div");
+      relation.className = "relation";
+      relation.innerHTML = frame.op
+        ? `<div class="op-label">${frame.op}</div><div class="tilde">∼</div>`
+        : "";
+      const bracket = document.createElement("div");
+      bracket.className = "matrix-bracket";
+      const table = document.createElement("table");
+      table.className = "matrix-table";
+      frame.matrix.forEach((row, rowIndex) => {
+        const tr = document.createElement("tr");
+        if (rowIndex === frame.changed) tr.className = "changed";
+        row.forEach(value => {
+          const td = document.createElement("td");
+          td.textContent = value < 0 ? `−${-value}` : String(value);
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
+      bracket.appendChild(table);
+      demo.append(relation, bracket);
+      caption.textContent = frame.caption;
+    }
+
+    function startTourDemo() {
+      stopTourDemo();
+      let frame = 0;
+      renderTourDemo(tourBody, frame);
+      const advance = () => {
+        frame = (frame + 1) % tourDemoFrames.length;
+        renderTourDemo(tourBody, frame);
+        tourDemoTimer = window.setTimeout(advance, tourDemoFrames[frame].done ? 3400 : 1900);
+      };
+      tourDemoTimer = window.setTimeout(advance, 1600);
+    }
+
+    function stopTourDemo() {
+      window.clearTimeout(tourDemoTimer);
+      tourDemoTimer = 0;
+    }
+
+    function positionTour() {
+      if (!tourOpen()) return;
+      const step = tourSteps[tourIndex];
+      const target = step.target?.();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const cardRect = tourCard.getBoundingClientRect();
+      const margin = 12;
+
+      if (!target || !target.isConnected || target.getClientRects().length === 0) {
+        // Centered steps: shrink the spotlight to nothing so the whole page dims.
+        Object.assign(tourSpotlight.style, { top: `${vh / 2}px`, left: `${vw / 2}px`, width: "0px", height: "0px" });
+        tourCard.style.left = `${Math.max(margin, (vw - cardRect.width) / 2)}px`;
+        tourCard.style.top = `${Math.max(margin, (vh - cardRect.height) / 2)}px`;
+        return;
+      }
+
+      const pad = 8;
+      const rect = target.getBoundingClientRect();
+      const top = Math.max(4, rect.top - pad);
+      const left = Math.max(4, rect.left - pad);
+      const bottom = Math.min(vh - 4, rect.bottom + pad);
+      const right = Math.min(vw - 4, rect.right + pad);
+      Object.assign(tourSpotlight.style, {
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${Math.max(0, right - left)}px`,
+        height: `${Math.max(0, bottom - top)}px`
+      });
+
+      // Prefer below the target, then above, then docked to the bottom edge.
+      let cardTop;
+      if (bottom + margin + cardRect.height <= vh - margin) cardTop = bottom + margin;
+      else if (top - margin - cardRect.height >= margin) cardTop = top - margin - cardRect.height;
+      else cardTop = vh - margin - cardRect.height;
+      const idealLeft = rect.left + rect.width / 2 - cardRect.width / 2;
+      tourCard.style.top = `${Math.max(margin, cardTop)}px`;
+      tourCard.style.left = `${Math.min(Math.max(margin, idealLeft), vw - margin - cardRect.width)}px`;
+    }
+
+    function schedulePositionTour() {
+      cancelAnimationFrame(tourPositionFrame);
+      tourPositionFrame = requestAnimationFrame(positionTour);
+    }
+
+    function scrollTourTargetIntoView(target) {
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      // Leave room for the card: aim the target at the upper part of the screen.
+      const desiredTop = Math.min(96, window.innerHeight * 0.14);
+      const fits = rect.top >= 8 && rect.bottom <= window.innerHeight * 0.55;
+      if (!fits) window.scrollBy({ top: rect.top - desiredTop, behavior: "auto" });
+    }
+
+    function showTourStep(index) {
+      tourIndex = Math.max(0, Math.min(index, tourSteps.length - 1));
+      const step = tourSteps[tourIndex];
+      const last = tourIndex === tourSteps.length - 1;
+
+      tourStepCount.textContent = `Step ${tourIndex + 1} of ${tourSteps.length}`;
+      tourTitle.textContent = step.title;
+      tourBody.innerHTML = step.body;
+      if (step.demo) {
+        tourBody.insertAdjacentHTML("beforeend", `<div class="tour-demo" aria-hidden="true"></div><p class="tour-demo-caption" aria-hidden="true"></p>`);
+        startTourDemo();
+      } else {
+        stopTourDemo();
+      }
+
+      tourDots.innerHTML = "";
+      tourSteps.forEach((_, i) => {
+        const dot = document.createElement("span");
+        dot.className = `tour-dot${i === tourIndex ? " active" : ""}`;
+        tourDots.appendChild(dot);
+      });
+
+      tourBackBtn.hidden = tourIndex === 0 || last;
+      tourSkipBtn.textContent = step.secondary || "Skip tour";
+      tourNextBtn.textContent = step.next || (last ? "Done" : "Next");
+
+      scrollTourTargetIntoView(step.target?.());
+      positionTour();
+      // Measure again once the new content has laid out.
+      schedulePositionTour();
+      tourNextBtn.focus({ preventScroll: true });
+    }
+
+    function openTour() {
+      if (tourOpen()) return;
+      hideNumericKeypad();
+      if (interaction.stage !== "idle") cancelInteraction();
+      tourReturnFocus = document.activeElement;
+      tourRoot.hidden = false;
+      document.body.classList.add("tour-active");
+      showTourStep(0);
+    }
+
+    function closeTour({ startExample = false } = {}) {
+      if (!tourOpen()) return;
+      stopTourDemo();
+      tourIndex = -1;
+      tourRoot.hidden = true;
+      document.body.classList.remove("tour-active");
+      markTourSeen();
+      if (startExample) {
+        rowCount.value = String(EXAMPLE_MATRIX.length);
+        colCount.value = String(EXAMPLE_MATRIX[0].length);
+        buildEntryGrid(EXAMPLE_MATRIX);
+        switchMode("guided");
+        startComputation();
+        if (!mobileLayout()) workPanel.scrollIntoView({ block: "start", behavior: "smooth" });
+        return;
+      }
+      if (tourReturnFocus?.isConnected) tourReturnFocus.focus({ preventScroll: true });
+    }
+
+    tourNextBtn.addEventListener("click", () => {
+      if (tourIndex === tourSteps.length - 1) closeTour({ startExample: true });
+      else showTourStep(tourIndex + 1);
+    });
+    tourBackBtn.addEventListener("click", () => showTourStep(tourIndex - 1));
+    tourSkipBtn.addEventListener("click", () => closeTour());
+    tourBtn.addEventListener("click", openTour);
+
+    // Capture phase, so Escape closes the tour without also triggering the
+    // workspace's own Escape (Back) handling underneath it.
+    window.addEventListener("keydown", event => {
+      if (!tourOpen()) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeTour();
+      } else if (event.key === "ArrowRight" && tourIndex < tourSteps.length - 1) {
+        event.preventDefault();
+        showTourStep(tourIndex + 1);
+      } else if (event.key === "ArrowLeft" && tourIndex > 0) {
+        event.preventDefault();
+        showTourStep(tourIndex - 1);
+      } else if (event.key === "Tab") {
+        // Keep keyboard focus inside the dialog.
+        const focusable = [...tourCard.querySelectorAll("button")].filter(button => !button.hidden);
+        const first = focusable[0];
+        const lastButton = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          lastButton.focus();
+        } else if (!event.shiftKey && document.activeElement === lastButton) {
+          event.preventDefault();
+          first.focus();
+        } else if (!tourCard.contains(document.activeElement)) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    }, true);
+
+    window.addEventListener("resize", schedulePositionTour);
+    window.addEventListener("scroll", schedulePositionTour, { passive: true, capture: true });
+
+    updateModeControls();
+    populateSizeSelectors();
+    buildEntryGrid(EXAMPLE_MATRIX);
     renderHistory();
     refreshNumericInputModes();
     updateMobileLayoutMetrics();
+
+    if (!window.__disableWelcomeTour && !tourAlreadySeen()) {
+      window.setTimeout(openTour, 350);
+    }
 
   </script>
 </body>

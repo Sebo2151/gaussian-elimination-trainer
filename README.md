@@ -18,6 +18,8 @@ https://YOUR-USERNAME.github.io/gaussian-elimination-trainer/
 - **Practice mode** lets students choose their own strategy and requires them to enter the resulting row after scaling or row replacement.
 - **Free mode** performs valid elementary row operations automatically and is useful for demonstrations and exploratory work.
 
+A short welcome tour opens on the first visit (and any time from **Take the tour**). It introduces the three row operations and the three modes, and ends with a guided example.
+
 The app supports exact fractions, undo/redo, several categories of generated practice problems, mobile rational-number entry, LaTeX/PDF export on desktop, and responsive layouts for phones and computers.
 
 ## Run locally
