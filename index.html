@@ -309,7 +309,7 @@
 
     table.matrix-table {
       border-collapse: separate;
-      border-spacing: 15px 7px;
+      border-spacing: var(--col-gap, 15px) 7px;
       font-size: 1.13rem;
     }
 
@@ -530,6 +530,61 @@
     }
 
     .haptics-option input { width: 18px; height: 18px; }
+    .haptics-option[hidden] { display: none; }
+
+    /* Augmented-matrix bar: drawn in the gap before the last column. */
+    table.matrix-table { --col-gap: 15px; }
+    table.matrix-table.augmented td:last-child { position: relative; }
+    table.matrix-table.augmented td:last-child::before {
+      content: "";
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      left: calc(var(--col-gap) / -2 - 1px);
+      border-left: 1.5px solid currentColor;
+    }
+
+    .entry-divider {
+      grid-row: 1 / -1;
+      justify-self: center;
+      width: 0;
+      border-left: 2px solid currentColor;
+    }
+
+    .factor-apply { margin-left: -4px; }
+
+    .mode-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 520px;
+      margin: 0 auto 17px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .mode-divider::before,
+    .mode-divider::after {
+      content: "";
+      flex: 1;
+      border-top: 1px dashed var(--line);
+    }
+
+    .mode-dialog {
+      width: min(420px, calc(100vw - 24px));
+      border: 0;
+      border-radius: 16px;
+      padding: 18px;
+      color: var(--ink);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.32);
+    }
+
+    .mode-dialog::backdrop { background: rgba(15, 23, 42, 0.5); }
+    .mode-dialog h2 { margin: 0 0 8px; font-size: 1.15rem; letter-spacing: -0.02em; }
+    .mode-dialog p { margin: 0 0 14px; line-height: 1.45; color: var(--muted); }
+    .mode-dialog-actions { display: flex; flex-direction: column; gap: 8px; }
+    .mode-dialog-actions button { width: 100%; min-height: 42px; }
 
     html, body, .work-panel, .history-scroll, .interaction-panel { overflow-anchor: none; }
 
@@ -790,7 +845,7 @@
 
     .tour-demo .relation { width: 118px; flex-basis: 118px; }
     .tour-demo .op-label { transition: opacity 250ms ease; }
-    .tour-demo table.matrix-table { border-spacing: 10px 4px; font-size: 1.02rem; }
+    .tour-demo table.matrix-table { --col-gap: 10px; border-spacing: 10px 4px; font-size: 1.02rem; }
     .tour-demo table.matrix-table td { min-width: 22px; height: 24px; transition: background 250ms ease; }
     .tour-demo tr.changed td { background: var(--selected); }
     .tour-demo.done .matrix-bracket { color: var(--practice-good); }
@@ -885,7 +940,7 @@
         scroll-padding-top: 12px;
         scroll-padding-bottom: 12px;
       }
-      table.matrix-table { border-spacing: 10px 7px; font-size: 1.08rem; }
+      table.matrix-table { --col-gap: 10px; font-size: 1.08rem; }
       table.matrix-table td { min-width: 38px; min-height: 36px; padding: 5px 6px; }
       .interaction-panel {
         position: fixed;
@@ -922,6 +977,7 @@
       body.matrix-entry-active .mobile-prompt-actions { display: none; }
       .prompt-text, .prompt-hint, .error-text { flex-basis: 100%; }
       .factor-input { width: 100%; min-height: 46px; font-size: 1.08rem; }
+      .factor-apply { display: none; }
       .row-result-input { width: 64px; min-height: 46px; font-size: 1.05rem; }
       .practice-row-entry-wrap {
         display: grid;
@@ -1116,7 +1172,8 @@
         </label>
         <button id="randomBtn" type="button">Generate problem</button>
         <button id="startBtn" type="button" class="primary">Start / reset computation</button>
-        <label class="haptics-option"><input id="hapticsToggle" type="checkbox" checked /> Haptic feedback</label>
+        <label class="haptics-option" title="Draw a bar before the last column, as for a system of equations"><input id="augmentedToggle" type="checkbox" /> Augmented matrix</label>
+        <label class="haptics-option" id="hapticsOption"><input id="hapticsToggle" type="checkbox" checked /> Haptic feedback</label>
       </div>
       <div class="entry-wrap">
         <div id="entryMatrix" class="entry-matrix" aria-label="Matrix entry grid"></div>
@@ -1192,6 +1249,16 @@
 
   <div id="fireworksOverlay" class="fireworks-overlay" aria-hidden="true"></div>
 
+  <dialog id="modeDialog" class="mode-dialog" aria-labelledby="modeDialogTitle">
+    <h2 id="modeDialogTitle">Switch modes?</h2>
+    <p id="modeDialogText"></p>
+    <div class="mode-dialog-actions">
+      <button id="modeContinueBtn" class="primary" type="button">Continue from the current matrix</button>
+      <button id="modeRestartBtn" type="button">Restart from the original matrix</button>
+      <button id="modeCancelBtn" type="button">Cancel</button>
+    </div>
+  </dialog>
+
   <div id="tourRoot" class="tour-root" hidden>
     <div class="tour-blocker"></div>
     <div id="tourSpotlight" class="tour-spotlight"></div>
@@ -1242,6 +1309,14 @@
     const latexBtn = document.getElementById("latexBtn");
     const pdfBtn = document.getElementById("pdfBtn");
     const hapticsToggle = document.getElementById("hapticsToggle");
+    const hapticsOption = document.getElementById("hapticsOption");
+    const augmentedToggle = document.getElementById("augmentedToggle");
+    const modeDialog = document.getElementById("modeDialog");
+    const modeDialogTitle = document.getElementById("modeDialogTitle");
+    const modeDialogText = document.getElementById("modeDialogText");
+    const modeContinueBtn = document.getElementById("modeContinueBtn");
+    const modeRestartBtn = document.getElementById("modeRestartBtn");
+    const modeCancelBtn = document.getElementById("modeCancelBtn");
     const interactionPanel = document.getElementById("interactionPanel");
     const workPanel = document.querySelector(".work-panel");
     const workHeader = document.querySelector(".work-header");
@@ -1256,6 +1331,9 @@
     let mode = "free";
     let history = [];
     let historyIndex = -1;
+    // Undo cannot go below this index: steps before it were made in another
+    // mode, whose guidance state is not carried over.
+    let historyFloor = 0;
     let interaction = idleInteraction();
     let guideState = null;
     let guidedErrorCounts = {};
@@ -1273,6 +1351,16 @@
 
     function customKeypadPreferred() {
       return window.matchMedia("(pointer: coarse)").matches || mobileLayout();
+    }
+
+    // Vibration only exists on phones (and not in iOS Safari), so the option
+    // is shown only where it can do something.
+    function refreshHapticsOption() {
+      hapticsOption.hidden = !(window.matchMedia("(pointer: coarse)").matches && typeof navigator.vibrate === "function");
+    }
+
+    function augmentedFor(matrix) {
+      return augmentedToggle.checked && matrix?.[0]?.length >= 2;
     }
 
     function haptic(kind = "choice") {
@@ -1860,7 +1948,20 @@
       const rows = Number(rowCount.value);
       const cols = Number(colCount.value);
       entryMatrix.innerHTML = "";
-      entryMatrix.style.gridTemplateColumns = `repeat(${cols}, 72px)`;
+      entryMatrix.dataset.cols = String(cols);
+      if (augmentedToggle.checked && cols >= 2) {
+        // A narrow extra grid column holds the bar; the inputs flow around it.
+        entryMatrix.style.gridTemplateColumns = `repeat(${cols - 1}, 72px) 14px 72px`;
+        entryMatrix.style.gridTemplateRows = `repeat(${rows}, auto)`;
+        const divider = document.createElement("div");
+        divider.className = "entry-divider";
+        divider.style.gridColumn = String(cols);
+        divider.setAttribute("aria-hidden", "true");
+        entryMatrix.appendChild(divider);
+      } else {
+        entryMatrix.style.gridTemplateColumns = `repeat(${cols}, 72px)`;
+        entryMatrix.style.gridTemplateRows = "";
+      }
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -1925,6 +2026,7 @@
         practiceFeedback: null
       }];
       historyIndex = 0;
+      historyFloor = 0;
       setActiveOperationButton(null);
       renderHistory(true);
       if (revealWork) requestAnimationFrame(() => scrollToWorkArea());
@@ -1975,10 +2077,18 @@
       practiceModeBtn.setAttribute("aria-pressed", String(mode === "practice"));
     }
 
-    function switchMode(nextMode) {
+    const MODE_NAMES = { free: "Free", guided: "Guided", practice: "Practice" };
+    let pendingModeSwitch = null;
+
+    function switchMode(nextMode, { restart = false } = {}) {
       if (!["free", "guided", "practice"].includes(nextMode)) return;
       if (nextMode === mode) {
         updateModeControls();
+        return;
+      }
+      // Once work exists, let the student choose whether to keep it.
+      if (!restart && historyIndex > 0) {
+        openModeDialog(nextMode);
         return;
       }
       const initialMatrix = history.length ? cloneMatrix(history[0].matrix) : null;
@@ -1990,6 +2100,45 @@
         guideState = null;
         renderHistory();
       }
+    }
+
+    function continueInMode(nextMode) {
+      mode = nextMode;
+      updateModeControls();
+      hideNumericKeypad();
+      history = history.slice(0, historyIndex + 1);
+      interaction = idleInteraction();
+      guideState = mode === "guided" ? initializeGuide(currentMatrix()) : null;
+      guidedErrorCounts = {};
+      history[historyIndex] = {
+        ...history[historyIndex],
+        guideAfter: cloneGuide(guideState),
+        practiceFeedback: null,
+        continuedIn: mode
+      };
+      historyFloor = historyIndex;
+      setActiveOperationButton(null);
+      renderHistory(true);
+      if (mode === "guided" && guideState?.stage === "complete") haptic("complete");
+    }
+
+    function openModeDialog(nextMode) {
+      pendingModeSwitch = nextMode;
+      const name = MODE_NAMES[nextMode];
+      modeDialogTitle.textContent = `Switch to ${name} mode?`;
+      modeDialogText.textContent = `You can keep your work and continue from the current matrix in ${name} mode, or start over from the original matrix.`;
+      hideNumericKeypad();
+      modeDialog.showModal();
+      modeContinueBtn.focus();
+    }
+
+    function closeModeDialog(choice) {
+      const nextMode = pendingModeSwitch;
+      pendingModeSwitch = null;
+      if (modeDialog.open) modeDialog.close();
+      if (choice === "continue" && nextMode) continueInMode(nextMode);
+      else if (choice === "restart" && nextMode) switchMode(nextMode, { restart: true });
+      else updateModeControls();
     }
 
     function currentMatrix() {
@@ -2139,7 +2288,7 @@
       const bracket = document.createElement("div");
       bracket.className = "matrix-bracket";
       const table = document.createElement("table");
-      table.className = `matrix-table${interactive ? " interactive" : ""}`;
+      table.className = `matrix-table${interactive ? " interactive" : ""}${augmentedFor(matrix) ? " augmented" : ""}`;
       table.setAttribute("role", "grid");
 
       const pivot = mode === "guided" && interactive ? activePivot() : null;
@@ -2254,6 +2403,12 @@
           balance.setAttribute("aria-hidden", "true");
           line.appendChild(balance);
           historyEl.appendChild(line);
+          if (history[i].continuedIn) {
+            const divider = document.createElement("div");
+            divider.className = "mode-divider";
+            divider.textContent = `Continued in ${MODE_NAMES[history[i].continuedIn]} mode`;
+            historyEl.appendChild(divider);
+          }
         }
       }
       updateButtons();
@@ -2299,7 +2454,7 @@
         replaceBtn.disabled = currentMatrix().length < 2;
       }
 
-      undoBtn.disabled = historyIndex <= 0;
+      undoBtn.disabled = historyIndex <= historyFloor;
       redoBtn.disabled = historyIndex < 0 || historyIndex >= history.length - 1;
       latexBtn.disabled = !hasMatrix;
       pdfBtn.disabled = !hasMatrix;
@@ -2331,6 +2486,14 @@
           if (old) old.remove();
         });
         promptLine.appendChild(input);
+        const apply = document.createElement("button");
+        apply.type = "button";
+        apply.className = "factor-apply";
+        apply.textContent = mode === "free" ? "Apply" : mode === "practice" ? "Continue" : "Check";
+        apply.addEventListener("click", () => {
+          input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+        });
+        promptLine.appendChild(apply);
         requestAnimationFrame(() => {
           input.focus(customKeypadPreferred() ? { preventScroll: true } : undefined);
           if (customKeypadPreferred()) showNumericKeypad(input);
@@ -2395,7 +2558,11 @@
       }
       switch (interaction.stage) {
         case "idle":
-          setPrompt("Choose a row operation.", "Only the most recent matrix is active.");
+          if (isRref(currentMatrix())) {
+            setPrompt("The matrix is in reduced row echelon form.", "Undo a step, review your work, or start another matrix.");
+          } else {
+            setPrompt("Choose a row operation.", "Only the most recent matrix is active.");
+          }
           break;
         case "scale-row":
           setPrompt("Select the row to scale.", `${esc} cancels.`);
@@ -3395,7 +3562,7 @@
     }
 
     function undo() {
-      if (historyIndex <= 0) return;
+      if (historyIndex <= historyFloor) return;
       const undone = history[historyIndex];
       historyIndex--;
       interaction = idleInteraction();
@@ -3666,6 +3833,10 @@
 
     function matrixLatex(matrix) {
       const rows = matrix.map(row => row.map(rationalLatex).join(" & ")).join(" \\\\\n");
+      if (augmentedFor(matrix)) {
+        const spec = `${"c".repeat(matrix[0].length - 1)}|c`;
+        return `\\left[\\begin{array}{${spec}}\n${rows}\n\\end{array}\\right]`;
+      }
       return `\\begin{bmatrix}\n${rows}\n\\end{bmatrix}`;
     }
 
@@ -3764,13 +3935,25 @@
     }
 
     document.addEventListener("keydown", event => {
+      if (modeDialog.open) return;
       if (event.key === "Escape" && performBackAction()) event.preventDefault();
+    });
+
+    modeContinueBtn.addEventListener("click", () => closeModeDialog("continue"));
+    modeRestartBtn.addEventListener("click", () => closeModeDialog("restart"));
+    modeCancelBtn.addEventListener("click", () => closeModeDialog("cancel"));
+    // Escape or any other dismissal counts as Cancel.
+    modeDialog.addEventListener("close", () => { if (pendingModeSwitch) closeModeDialog("cancel"); });
+
+    augmentedToggle.addEventListener("change", () => {
+      buildEntryGrid(currentEntryValues());
+      if (historyIndex >= 0) renderHistory();
     });
 
     // Keep whatever overlaps the new size so that adding a column (for example,
     // an augmented column) does not erase the entries already typed.
     function currentEntryValues() {
-      const cols = Number(entryMatrix.style.gridTemplateColumns.match(/repeat\((\d+)/)?.[1] || 0);
+      const cols = Number(entryMatrix.dataset.cols || 0);
       const values = [...entryMatrix.querySelectorAll(".matrix-entry")].map(input => input.value);
       const grid = [];
       for (let i = 0; cols && i < values.length; i += cols) grid.push(values.slice(i, i + cols));
@@ -3808,6 +3991,7 @@
     });
     const handleViewportChange = () => {
       refreshNumericInputModes();
+      refreshHapticsOption();
       centerEntryMatrix();
       if (mobileLayout() && currentMatrix()) document.body.classList.add("computation-active");
       updateMobileLayoutMetrics();
@@ -3870,7 +4054,7 @@
         target: () => entryWrap,
         title: "Enter a matrix",
         body: `<p>Type one number per box. Integers, fractions such as <span class="kbd">-7/3</span>, and decimals such as <span class="kbd">1.25</span> all work, and arithmetic is always exact.</p>
-          <p>For a system of equations, put the constants in the last column.</p>`
+          <p>For a system of equations, put the constants in the last column and tick <strong>Augmented matrix</strong> to draw the bar.</p>`
       },
       {
         target: () => document.querySelector(".setup-toolbar"),
@@ -3889,7 +4073,7 @@
       {
         target: () => startBtn,
         title: "Start the computation",
-        body: `<p>When the matrix is ready, press <strong>Start</strong>. Switching modes afterward restarts from this same matrix.</p>`
+        body: `<p>When the matrix is ready, press <strong>Start</strong>. If you switch modes partway through, you can keep going from where you are or start over.</p>`
       },
       {
         target: () => document.querySelector(".operation-toolbar"),
@@ -4146,6 +4330,7 @@
     window.addEventListener("scroll", schedulePositionTour, { passive: true, capture: true });
 
     updateModeControls();
+    refreshHapticsOption();
     populateSizeSelectors();
     buildEntryGrid(EXAMPLE_MATRIX);
     renderHistory();
