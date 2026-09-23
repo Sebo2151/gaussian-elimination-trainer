@@ -3188,8 +3188,12 @@
         interaction.attempts = (interaction.attempts || 0) + 1;
         const firstWrong = wrong.indexOf(true);
         inputs.forEach((input, col) => input.classList.toggle("invalid", interaction.attempts >= 3 && wrong[col]));
+        const wrongCols = wrong.flatMap((isWrong, col) => isWrong ? [col] : []);
+        const diagnosis = interaction.attempts <= 3 ? diagnosePracticeRow(proposed, expected, wrongCols) : null;
         let message;
-        if (interaction.attempts === 1) {
+        if (diagnosis) {
+          message = diagnosis;
+        } else if (interaction.attempts === 1) {
           message = "The proposed row is not correct. Check each entry using the same row operation.";
         } else if (interaction.attempts === 2) {
           message = "Recalculate the entire row—not only the entry you intended to eliminate or normalize.";
@@ -3262,7 +3266,10 @@
             `Your factor c must satisfy c(${pivotValue}) = 1.`,
             `Use the reciprocal of ${pivotValue}: ${rationalText(expected)}.`
           ];
-          showFactorError(input, messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
+          const diagnosis = interaction.attempts < messages.length
+            ? diagnoseGuidedScaleFactor(factor, matrix[pivot.row][pivot.col])
+            : null;
+          showFactorError(input, diagnosis || messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
           return;
         }
         const nextMatrix = cloneMatrix(matrix);
@@ -3296,7 +3303,10 @@
             `Your factor c must satisfy c(${sourceValue}) + ${targetValue} = 0.`,
             `Solve c = -(${targetValue})/(${sourceValue}), giving ${rationalText(expected)}.`
           ];
-          showFactorError(input, messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
+          const diagnosis = interaction.attempts < messages.length
+            ? diagnoseGuidedReplaceFactor(factor, matrix[source][pivot.col], matrix[target][pivot.col])
+            : null;
+          showFactorError(input, diagnosis || messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
           return;
         }
         const nextMatrix = cloneMatrix(matrix);
@@ -3340,6 +3350,97 @@
       if (factor.d === 1n && factor.n === 1n) return `R_{${rowNumber}}`;
       if (factor.d === 1n && factor.n === -1n) return `-R_{${rowNumber}}`;
       return `${rationalLatex(factor)}R_{${rowNumber}}`;
+    }
+
+    // ------------------------------------------------------------------
+    // Common-mistake detection. Each wrong answer is compared against the
+    // result of a typical error; a match gets feedback that names the error
+    // without giving away the answer.
+    // ------------------------------------------------------------------
+
+    function coefficientText(factor, rowNumber) {
+      if (factor.d === 1n && factor.n === 1n) return `R${rowNumber}`;
+      if (factor.d === 1n && factor.n === -1n) return `−R${rowNumber}`;
+      return `${rationalText(factor)}R${rowNumber}`;
+    }
+
+    function rowsEqual(left, right) {
+      return left.length === right.length && left.every((value, col) => equalFrac(value, right[col]));
+    }
+
+    function entryList(cols) {
+      const numbers = cols.map(col => col + 1);
+      const text = numbers.length === 1
+        ? String(numbers[0])
+        : `${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}`;
+      return `${numbers.length === 1 ? "Entry" : "Entries"} ${text}`;
+    }
+
+    function diagnoseGuidedScaleFactor(factor, pivotValue) {
+      const expected = divFrac(frac(1n), pivotValue);
+      if (equalFrac(factor, pivotValue)) {
+        return `That multiplies the pivot by itself, giving ${rationalText(mulFrac(pivotValue, pivotValue))} rather than 1.`;
+      }
+      if (equalFrac(factor, negFrac(expected))) {
+        return "Check the sign: that factor makes the pivot −1, not 1.";
+      }
+      return null;
+    }
+
+    function diagnoseGuidedReplaceFactor(factor, sourceValue, targetValue) {
+      if (equalFrac(factor, divFrac(targetValue, sourceValue))) {
+        const result = addFrac(mulFrac(factor, sourceValue), targetValue);
+        return `Check the sign: with that factor the entry becomes ${rationalText(result)} instead of 0.`;
+      }
+      if (!isZero(targetValue) && (
+        equalFrac(factor, divFrac(sourceValue, targetValue)) ||
+        equalFrac(factor, negFrac(divFrac(sourceValue, targetValue)))
+      )) {
+        return `It looks like the fraction is upside down. c multiplies the pivot-row entry ${rationalText(sourceValue)}, so c(${rationalText(sourceValue)}) must equal ${rationalText(negFrac(targetValue))}.`;
+      }
+      return null;
+    }
+
+    function diagnosePracticeRow(proposed, expected, wrongCols) {
+      const matrix = currentMatrix();
+      const factor = interaction.factor;
+      const s = interaction.source + 1;
+
+      if (interaction.stage === "practice-scale-row-entry") {
+        const row = matrix[interaction.source];
+        const scaledBy = k => row.map(value => mulFrac(k, value));
+        if (rowsEqual(proposed, scaledBy(divFrac(frac(1n), factor)))) {
+          return `It looks like each entry was divided by ${rationalText(factor)} instead of multiplied by it.`;
+        }
+        if (rowsEqual(proposed, scaledBy(negFrac(factor)))) {
+          return `Check the sign: the row matches ${coefficientText(negFrac(factor), s)}, not ${coefficientText(factor, s)}.`;
+        }
+        if (wrongCols.every(col => equalFrac(proposed[col], row[col]))) {
+          return `${entryList(wrongCols)} still ${wrongCols.length === 1 ? "matches" : "match"} the original row ${s}. Scaling multiplies every entry of the row.`;
+        }
+      } else {
+        const t = interaction.target + 1;
+        const source = matrix[interaction.source];
+        const target = matrix[interaction.target];
+        const combine = (k, multiplied, added) => multiplied.map((value, col) => addFrac(mulFrac(k, value), added[col]));
+        if (rowsEqual(proposed, combine(negFrac(factor), source, target))) {
+          return `Check the sign: the row matches ${coefficientText(negFrac(factor), s)} + R${t}, not ${coefficientText(factor, s)} + R${t}.`;
+        }
+        if (rowsEqual(proposed, combine(factor, target, source))) {
+          return `The row matches ${coefficientText(factor, t)} + R${s}. The multiple belongs on the source row R${s}, and it is added to R${t}.`;
+        }
+        if (rowsEqual(proposed, source.map(value => mulFrac(factor, value)))) {
+          return `The row matches ${coefficientText(factor, s)} alone. Row replacement adds this multiple to the original R${t}.`;
+        }
+        if (wrongCols.every(col => equalFrac(proposed[col], target[col]))) {
+          return `${entryList(wrongCols)} still ${wrongCols.length === 1 ? "matches" : "match"} the original row ${t}. Row replacement changes every entry of the row, not only the one being cleared.`;
+        }
+      }
+
+      if (wrongCols.every(col => !isZero(expected[col]) && equalFrac(proposed[col], negFrac(expected[col])))) {
+        return `${entryList(wrongCols)} ${wrongCols.length === 1 ? "has" : "have"} the right size but the wrong sign.`;
+      }
+      return null;
     }
 
     function firstNonzeroColumn(row) {
@@ -3419,6 +3520,19 @@
       };
     }
 
+    function isUnit(x) { return x.d === 1n && absBigInt(x.n) === 1n; }
+
+    // The position where the forward phase would place its next pivot: the
+    // first row after the established echelon rows, in the first column to
+    // the right of their pivots that has a nonzero entry at or below that row.
+    function nextPivotPosition(matrix, info) {
+      const row = info.protectedPrefix;
+      if (row >= matrix.length) return null;
+      const startCol = row > 0 ? info.pivots[row - 1].col + 1 : 0;
+      const col = findPivotColumn(matrix, row, startCol);
+      return col === null ? null : { row, col };
+    }
+
     function isRref(matrix) {
       return analyzeMatrixStructure(matrix).rref;
     }
@@ -3465,6 +3579,28 @@
           title: "Correct, but it undoes progress",
           message: "The row operation is valid, but it disrupts part of the echelon or reduced structure already established."
         };
+      }
+
+      // Interchanges and replacements that produce a ±1 pivot are good strategy
+      // even though they do not yet clear anything.
+      const nextPivot = nextPivotPosition(before, beforeInfo);
+      if (nextPivot && operation.kind !== "scale") {
+        const { row, col } = nextPivot;
+        if (!isUnit(before[row][col]) && isUnit(after[row][col])) {
+          return {
+            kind: "efficient",
+            title: "Correct and convenient",
+            message: "This puts a 1 or −1 in the next pivot position, which keeps the elimination arithmetic simple."
+          };
+        }
+        const unitInColumn = matrix => matrix.some((values, r) => r >= row && isUnit(values[col]));
+        if (operation.kind === "replace" && !unitInColumn(before) && unitInColumn(after)) {
+          return {
+            kind: "efficient",
+            title: "Correct and convenient",
+            message: "This creates a 1 or −1 in the next pivot column, which can then be moved into the pivot position."
+          };
+        }
       }
 
       if (operation.kind === "scale") {
