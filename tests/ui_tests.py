@@ -35,7 +35,9 @@ from playwright.sync_api import sync_playwright
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_HTML = REPO_ROOT / "index.html"
 DEFAULT_OUTPUT = REPO_ROOT / "ui_test_report"
-CHROMIUM = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
+# Use CHROMIUM_PATH if set, then a system Chromium, and otherwise the browser
+# installed by `python -m playwright install chromium`.
+CHROMIUM = os.environ.get("CHROMIUM_PATH") or ("/usr/bin/chromium" if Path("/usr/bin/chromium").exists() else None)
 
 
 @dataclass(frozen=True)
@@ -114,6 +116,8 @@ class Suite:
                 {"viewport": viewport.name, "type": "pageerror", "text": str(exc)}
             ),
         )
+        # Keep the first-visit welcome tour from covering the controls under test.
+        page.add_init_script("window.__disableWelcomeTour = true;")
         # Browser navigation is intentionally avoided. This also makes the suite
         # independent of a local web server.
         page.set_content(self.html_source, wait_until="load")

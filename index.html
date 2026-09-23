@@ -309,7 +309,7 @@
 
     table.matrix-table {
       border-collapse: separate;
-      border-spacing: 15px 7px;
+      border-spacing: var(--col-gap, 15px) 7px;
       font-size: 1.13rem;
     }
 
@@ -530,6 +530,61 @@
     }
 
     .haptics-option input { width: 18px; height: 18px; }
+    .haptics-option[hidden] { display: none; }
+
+    /* Augmented-matrix bar: drawn in the gap before the last column. */
+    table.matrix-table { --col-gap: 15px; }
+    table.matrix-table.augmented td:last-child { position: relative; }
+    table.matrix-table.augmented td:last-child::before {
+      content: "";
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      left: calc(var(--col-gap) / -2 - 1px);
+      border-left: 1.5px solid currentColor;
+    }
+
+    .entry-divider {
+      grid-row: 1 / -1;
+      justify-self: center;
+      width: 0;
+      border-left: 2px solid currentColor;
+    }
+
+    .factor-apply { margin-left: -4px; }
+
+    .mode-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 520px;
+      margin: 0 auto 17px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .mode-divider::before,
+    .mode-divider::after {
+      content: "";
+      flex: 1;
+      border-top: 1px dashed var(--line);
+    }
+
+    .mode-dialog {
+      width: min(420px, calc(100vw - 24px));
+      border: 0;
+      border-radius: 16px;
+      padding: 18px;
+      color: var(--ink);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.32);
+    }
+
+    .mode-dialog::backdrop { background: rgba(15, 23, 42, 0.5); }
+    .mode-dialog h2 { margin: 0 0 8px; font-size: 1.15rem; letter-spacing: -0.02em; }
+    .mode-dialog p { margin: 0 0 14px; line-height: 1.45; color: var(--muted); }
+    .mode-dialog-actions { display: flex; flex-direction: column; gap: 8px; }
+    .mode-dialog-actions button { width: 100%; min-height: 42px; }
 
     html, body, .work-panel, .history-scroll, .interaction-panel { overflow-anchor: none; }
 
@@ -666,6 +721,157 @@
       100% { opacity: 0; transform: rotate(var(--angle)) translateY(calc(-1 * var(--distance))) scale(0.2); }
     }
 
+    .tour-link {
+      border: 0;
+      padding: 0;
+      background: none;
+      color: var(--accent);
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .tour-link:hover:not(:disabled) { background: none; color: #173aaf; }
+
+    .tour-root[hidden] { display: none; }
+
+    .tour-blocker {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+    }
+
+    .tour-spotlight {
+      position: fixed;
+      z-index: 301;
+      border-radius: 14px;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 0 200vmax rgba(15, 23, 42, 0.58);
+      pointer-events: none;
+      transition: top 320ms cubic-bezier(.2,.8,.2,1), left 320ms cubic-bezier(.2,.8,.2,1),
+        width 320ms cubic-bezier(.2,.8,.2,1), height 320ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    .tour-card {
+      position: fixed;
+      z-index: 302;
+      width: min(400px, calc(100vw - 24px));
+      max-height: calc(100dvh - 24px);
+      overflow-y: auto;
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.32);
+      padding: 18px 18px 14px;
+      transition: top 320ms cubic-bezier(.2,.8,.2,1), left 320ms cubic-bezier(.2,.8,.2,1), opacity 180ms ease;
+    }
+
+    .tour-card:focus { outline: none; }
+
+    .tour-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: -6px -8px 2px 0;
+    }
+
+    .tour-step-count {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .tour-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      letter-spacing: -0.02em;
+    }
+
+    .tour-body { line-height: 1.5; }
+    .tour-body p { margin: 0 0 8px; }
+    .tour-body ul { margin: 4px 0 8px; padding-left: 1.1em; }
+    .tour-body li { margin-bottom: 5px; }
+    .tour-body .op-notation {
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+      white-space: nowrap;
+    }
+
+    .tour-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .tour-dots { display: flex; gap: 6px; }
+
+    .tour-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--line);
+      transition: background 200ms ease, width 200ms ease;
+    }
+
+    .tour-dot.active { width: 18px; background: var(--accent); }
+
+    .tour-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+    .tour-skip {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding: 6px 8px;
+    }
+
+    .tour-skip:hover:not(:disabled) { border-color: transparent; color: var(--ink); }
+
+    .tour-demo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 4px 0 12px;
+      padding: 10px 6px;
+      border-radius: 12px;
+      background: var(--bg);
+      font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+    }
+
+    .tour-demo .relation { width: 118px; flex-basis: 118px; }
+    .tour-demo .op-label { transition: opacity 250ms ease; }
+    .tour-demo table.matrix-table { --col-gap: 10px; border-spacing: 10px 4px; font-size: 1.02rem; }
+    .tour-demo table.matrix-table td { min-width: 22px; height: 24px; transition: background 250ms ease; }
+    .tour-demo tr.changed td { background: var(--selected); }
+    .tour-demo.done .matrix-bracket { color: var(--practice-good); }
+
+    .tour-demo-caption {
+      margin: -6px 0 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.86rem;
+      min-height: 1.3em;
+    }
+
+    @media (max-width: 760px), (max-height: 520px) and (pointer: coarse) {
+      .tour-card { padding: 16px 14px 12px; }
+      .tour-actions button { min-height: 42px; }
+      .tour-skip { min-height: 36px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tour-spotlight, .tour-card, .tour-dot, .tour-demo * { transition: none !important; }
+    }
+
+    @media print {
+      .tour-root { display: none !important; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .shake { animation: none; }
       * { scroll-behavior: auto !important; }
@@ -734,7 +940,7 @@
         scroll-padding-top: 12px;
         scroll-padding-bottom: 12px;
       }
-      table.matrix-table { border-spacing: 10px 7px; font-size: 1.08rem; }
+      table.matrix-table { --col-gap: 10px; font-size: 1.08rem; }
       table.matrix-table td { min-width: 38px; min-height: 36px; padding: 5px 6px; }
       .interaction-panel {
         position: fixed;
@@ -771,6 +977,7 @@
       body.matrix-entry-active .mobile-prompt-actions { display: none; }
       .prompt-text, .prompt-hint, .error-text { flex-basis: 100%; }
       .factor-input { width: 100%; min-height: 46px; font-size: 1.08rem; }
+      .factor-apply { display: none; }
       .row-result-input { width: 64px; min-height: 46px; font-size: 1.05rem; }
       .practice-row-entry-wrap {
         display: grid;
@@ -936,7 +1143,7 @@
     <header>
       <div>
         <h1>Gaussian Elimination Trainer</h1>
-        <p class="subtitle">Enter a matrix, then choose Guided, Practice, or Free mode.</p>
+        <p class="subtitle">Enter a matrix, then choose Guided, Practice, or Free mode. New here? <button id="tourBtn" class="tour-link" type="button">Take the tour</button></p>
       </div>
       <div class="mode-switch" aria-label="Mode selector">
         <button id="guidedModeBtn" class="mode-pill" type="button" autocomplete="off" aria-pressed="false">Guided mode</button>
@@ -965,7 +1172,8 @@
         </label>
         <button id="randomBtn" type="button">Generate problem</button>
         <button id="startBtn" type="button" class="primary">Start / reset computation</button>
-        <label class="haptics-option"><input id="hapticsToggle" type="checkbox" checked /> Haptic feedback</label>
+        <label class="haptics-option" title="Draw a bar before the last column, as for a system of equations"><input id="augmentedToggle" type="checkbox" /> Augmented matrix</label>
+        <label class="haptics-option" id="hapticsOption"><input id="hapticsToggle" type="checkbox" checked /> Haptic feedback</label>
       </div>
       <div class="entry-wrap">
         <div id="entryMatrix" class="entry-matrix" aria-label="Matrix entry grid"></div>
@@ -1041,6 +1249,36 @@
 
   <div id="fireworksOverlay" class="fireworks-overlay" aria-hidden="true"></div>
 
+  <dialog id="modeDialog" class="mode-dialog" aria-labelledby="modeDialogTitle">
+    <h2 id="modeDialogTitle">Switch modes?</h2>
+    <p id="modeDialogText"></p>
+    <div class="mode-dialog-actions">
+      <button id="modeContinueBtn" class="primary" type="button">Continue from the current matrix</button>
+      <button id="modeRestartBtn" type="button">Restart from the original matrix</button>
+      <button id="modeCancelBtn" type="button">Cancel</button>
+    </div>
+  </dialog>
+
+  <div id="tourRoot" class="tour-root" hidden>
+    <div class="tour-blocker"></div>
+    <div id="tourSpotlight" class="tour-spotlight"></div>
+    <div id="tourCard" class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tourTitle" tabindex="-1">
+      <div class="tour-head">
+        <p id="tourStepCount" class="tour-step-count"></p>
+        <button id="tourSkipBtn" class="tour-skip" type="button">Skip tour</button>
+      </div>
+      <h2 id="tourTitle"></h2>
+      <div id="tourBody" class="tour-body"></div>
+      <div class="tour-footer">
+        <div id="tourDots" class="tour-dots" aria-hidden="true"></div>
+        <div class="tour-actions">
+          <button id="tourBackBtn" type="button">Back</button>
+          <button id="tourNextBtn" class="primary" type="button">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     "use strict";
 
@@ -1071,6 +1309,14 @@
     const latexBtn = document.getElementById("latexBtn");
     const pdfBtn = document.getElementById("pdfBtn");
     const hapticsToggle = document.getElementById("hapticsToggle");
+    const hapticsOption = document.getElementById("hapticsOption");
+    const augmentedToggle = document.getElementById("augmentedToggle");
+    const modeDialog = document.getElementById("modeDialog");
+    const modeDialogTitle = document.getElementById("modeDialogTitle");
+    const modeDialogText = document.getElementById("modeDialogText");
+    const modeContinueBtn = document.getElementById("modeContinueBtn");
+    const modeRestartBtn = document.getElementById("modeRestartBtn");
+    const modeCancelBtn = document.getElementById("modeCancelBtn");
     const interactionPanel = document.getElementById("interactionPanel");
     const workPanel = document.querySelector(".work-panel");
     const workHeader = document.querySelector(".work-header");
@@ -1085,6 +1331,9 @@
     let mode = "free";
     let history = [];
     let historyIndex = -1;
+    // Undo cannot go below this index: steps before it were made in another
+    // mode, whose guidance state is not carried over.
+    let historyFloor = 0;
     let interaction = idleInteraction();
     let guideState = null;
     let guidedErrorCounts = {};
@@ -1102,6 +1351,16 @@
 
     function customKeypadPreferred() {
       return window.matchMedia("(pointer: coarse)").matches || mobileLayout();
+    }
+
+    // Vibration only exists on phones (and not in iOS Safari), so the option
+    // is shown only where it can do something.
+    function refreshHapticsOption() {
+      hapticsOption.hidden = !(window.matchMedia("(pointer: coarse)").matches && typeof navigator.vibrate === "function");
+    }
+
+    function augmentedFor(matrix) {
+      return augmentedToggle.checked && matrix?.[0]?.length >= 2;
     }
 
     function haptic(kind = "choice") {
@@ -1628,13 +1887,14 @@
       if (fractionMatch) return frac(BigInt(fractionMatch[1]), BigInt(fractionMatch[2]));
       if (/^[+-]?\d+$/.test(text)) return frac(BigInt(text));
 
-      const decimalMatch = text.match(/^([+-]?)(\d*)\.(\d+)$/);
-      if (decimalMatch && decimalMatch[2] !== "") {
+      // Accepts 1.25, .5, -.5, and 3. (at least one digit on either side).
+      const decimalMatch = text.match(/^([+-]?)(\d*)\.(\d*)$/);
+      if (decimalMatch && (decimalMatch[2] !== "" || decimalMatch[3] !== "")) {
         const sign = decimalMatch[1] === "-" ? -1n : 1n;
         const whole = decimalMatch[2] === "" ? "0" : decimalMatch[2];
         const digits = decimalMatch[3];
         const denominator = 10n ** BigInt(digits.length);
-        const numerator = BigInt(whole) * denominator + BigInt(digits);
+        const numerator = BigInt(whole) * denominator + BigInt(digits || "0");
         return frac(sign * numerator, denominator);
       }
 
@@ -1688,7 +1948,20 @@
       const rows = Number(rowCount.value);
       const cols = Number(colCount.value);
       entryMatrix.innerHTML = "";
-      entryMatrix.style.gridTemplateColumns = `repeat(${cols}, 72px)`;
+      entryMatrix.dataset.cols = String(cols);
+      if (augmentedToggle.checked && cols >= 2) {
+        // A narrow extra grid column holds the bar; the inputs flow around it.
+        entryMatrix.style.gridTemplateColumns = `repeat(${cols - 1}, 72px) 14px 72px`;
+        entryMatrix.style.gridTemplateRows = `repeat(${rows}, auto)`;
+        const divider = document.createElement("div");
+        divider.className = "entry-divider";
+        divider.style.gridColumn = String(cols);
+        divider.setAttribute("aria-hidden", "true");
+        entryMatrix.appendChild(divider);
+      } else {
+        entryMatrix.style.gridTemplateColumns = `repeat(${cols}, 72px)`;
+        entryMatrix.style.gridTemplateRows = "";
+      }
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -1753,6 +2026,7 @@
         practiceFeedback: null
       }];
       historyIndex = 0;
+      historyFloor = 0;
       setActiveOperationButton(null);
       renderHistory(true);
       if (revealWork) requestAnimationFrame(() => scrollToWorkArea());
@@ -1803,10 +2077,18 @@
       practiceModeBtn.setAttribute("aria-pressed", String(mode === "practice"));
     }
 
-    function switchMode(nextMode) {
+    const MODE_NAMES = { free: "Free", guided: "Guided", practice: "Practice" };
+    let pendingModeSwitch = null;
+
+    function switchMode(nextMode, { restart = false } = {}) {
       if (!["free", "guided", "practice"].includes(nextMode)) return;
       if (nextMode === mode) {
         updateModeControls();
+        return;
+      }
+      // Once work exists, let the student choose whether to keep it.
+      if (!restart && historyIndex > 0) {
+        openModeDialog(nextMode);
         return;
       }
       const initialMatrix = history.length ? cloneMatrix(history[0].matrix) : null;
@@ -1818,6 +2100,45 @@
         guideState = null;
         renderHistory();
       }
+    }
+
+    function continueInMode(nextMode) {
+      mode = nextMode;
+      updateModeControls();
+      hideNumericKeypad();
+      history = history.slice(0, historyIndex + 1);
+      interaction = idleInteraction();
+      guideState = mode === "guided" ? initializeGuide(currentMatrix()) : null;
+      guidedErrorCounts = {};
+      history[historyIndex] = {
+        ...history[historyIndex],
+        guideAfter: cloneGuide(guideState),
+        practiceFeedback: null,
+        continuedIn: mode
+      };
+      historyFloor = historyIndex;
+      setActiveOperationButton(null);
+      renderHistory(true);
+      if (mode === "guided" && guideState?.stage === "complete") haptic("complete");
+    }
+
+    function openModeDialog(nextMode) {
+      pendingModeSwitch = nextMode;
+      const name = MODE_NAMES[nextMode];
+      modeDialogTitle.textContent = `Switch to ${name} mode?`;
+      modeDialogText.textContent = `You can keep your work and continue from the current matrix in ${name} mode, or start over from the original matrix.`;
+      hideNumericKeypad();
+      modeDialog.showModal();
+      modeContinueBtn.focus();
+    }
+
+    function closeModeDialog(choice) {
+      const nextMode = pendingModeSwitch;
+      pendingModeSwitch = null;
+      if (modeDialog.open) modeDialog.close();
+      if (choice === "continue" && nextMode) continueInMode(nextMode);
+      else if (choice === "restart" && nextMode) switchMode(nextMode, { restart: true });
+      else updateModeControls();
     }
 
     function currentMatrix() {
@@ -1967,7 +2288,7 @@
       const bracket = document.createElement("div");
       bracket.className = "matrix-bracket";
       const table = document.createElement("table");
-      table.className = `matrix-table${interactive ? " interactive" : ""}`;
+      table.className = `matrix-table${interactive ? " interactive" : ""}${augmentedFor(matrix) ? " augmented" : ""}`;
       table.setAttribute("role", "grid");
 
       const pivot = mode === "guided" && interactive ? activePivot() : null;
@@ -2082,6 +2403,12 @@
           balance.setAttribute("aria-hidden", "true");
           line.appendChild(balance);
           historyEl.appendChild(line);
+          if (history[i].continuedIn) {
+            const divider = document.createElement("div");
+            divider.className = "mode-divider";
+            divider.textContent = `Continued in ${MODE_NAMES[history[i].continuedIn]} mode`;
+            historyEl.appendChild(divider);
+          }
         }
       }
       updateButtons();
@@ -2127,7 +2454,7 @@
         replaceBtn.disabled = currentMatrix().length < 2;
       }
 
-      undoBtn.disabled = historyIndex <= 0;
+      undoBtn.disabled = historyIndex <= historyFloor;
       redoBtn.disabled = historyIndex < 0 || historyIndex >= history.length - 1;
       latexBtn.disabled = !hasMatrix;
       pdfBtn.disabled = !hasMatrix;
@@ -2159,6 +2486,14 @@
           if (old) old.remove();
         });
         promptLine.appendChild(input);
+        const apply = document.createElement("button");
+        apply.type = "button";
+        apply.className = "factor-apply";
+        apply.textContent = mode === "free" ? "Apply" : mode === "practice" ? "Continue" : "Check";
+        apply.addEventListener("click", () => {
+          input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+        });
+        promptLine.appendChild(apply);
         requestAnimationFrame(() => {
           input.focus(customKeypadPreferred() ? { preventScroll: true } : undefined);
           if (customKeypadPreferred()) showNumericKeypad(input);
@@ -2223,7 +2558,11 @@
       }
       switch (interaction.stage) {
         case "idle":
-          setPrompt("Choose a row operation.", "Only the most recent matrix is active.");
+          if (isRref(currentMatrix())) {
+            setPrompt("The matrix is in reduced row echelon form.", "Undo a step, review your work, or start another matrix.");
+          } else {
+            setPrompt("Choose a row operation.", "Only the most recent matrix is active.");
+          }
           break;
         case "scale-row":
           setPrompt("Select the row to scale.", `${esc} cancels.`);
@@ -2487,7 +2826,7 @@
           if (rowIndex === interaction.source) {
             haptic("error");
             shake();
-            setPrompt("Choose a different second row.", '<span class="kbd">Esc</span> cancels.', true);
+            setPrompt("Choose a different second row.", `${customKeypadPreferred() ? "<strong>Back</strong>" : '<span class="kbd">Esc</span>'} cancels.`, true);
             return;
           }
           applyScalingOrSwap("swap", interaction.source, null, rowIndex);
@@ -2849,8 +3188,12 @@
         interaction.attempts = (interaction.attempts || 0) + 1;
         const firstWrong = wrong.indexOf(true);
         inputs.forEach((input, col) => input.classList.toggle("invalid", interaction.attempts >= 3 && wrong[col]));
+        const wrongCols = wrong.flatMap((isWrong, col) => isWrong ? [col] : []);
+        const diagnosis = interaction.attempts <= 3 ? diagnosePracticeRow(proposed, expected, wrongCols) : null;
         let message;
-        if (interaction.attempts === 1) {
+        if (diagnosis) {
+          message = diagnosis;
+        } else if (interaction.attempts === 1) {
           message = "The proposed row is not correct. Check each entry using the same row operation.";
         } else if (interaction.attempts === 2) {
           message = "Recalculate the entire row—not only the entry you intended to eliminate or normalize.";
@@ -2923,7 +3266,10 @@
             `Your factor c must satisfy c(${pivotValue}) = 1.`,
             `Use the reciprocal of ${pivotValue}: ${rationalText(expected)}.`
           ];
-          showFactorError(input, messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
+          const diagnosis = interaction.attempts < messages.length
+            ? diagnoseGuidedScaleFactor(factor, matrix[pivot.row][pivot.col])
+            : null;
+          showFactorError(input, diagnosis || messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
           return;
         }
         const nextMatrix = cloneMatrix(matrix);
@@ -2957,7 +3303,10 @@
             `Your factor c must satisfy c(${sourceValue}) + ${targetValue} = 0.`,
             `Solve c = -(${targetValue})/(${sourceValue}), giving ${rationalText(expected)}.`
           ];
-          showFactorError(input, messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
+          const diagnosis = interaction.attempts < messages.length
+            ? diagnoseGuidedReplaceFactor(factor, matrix[source][pivot.col], matrix[target][pivot.col])
+            : null;
+          showFactorError(input, diagnosis || messages[Math.min(interaction.attempts - 1, messages.length - 1)]);
           return;
         }
         const nextMatrix = cloneMatrix(matrix);
@@ -3001,6 +3350,97 @@
       if (factor.d === 1n && factor.n === 1n) return `R_{${rowNumber}}`;
       if (factor.d === 1n && factor.n === -1n) return `-R_{${rowNumber}}`;
       return `${rationalLatex(factor)}R_{${rowNumber}}`;
+    }
+
+    // ------------------------------------------------------------------
+    // Common-mistake detection. Each wrong answer is compared against the
+    // result of a typical error; a match gets feedback that names the error
+    // without giving away the answer.
+    // ------------------------------------------------------------------
+
+    function coefficientText(factor, rowNumber) {
+      if (factor.d === 1n && factor.n === 1n) return `R${rowNumber}`;
+      if (factor.d === 1n && factor.n === -1n) return `−R${rowNumber}`;
+      return `${rationalText(factor)}R${rowNumber}`;
+    }
+
+    function rowsEqual(left, right) {
+      return left.length === right.length && left.every((value, col) => equalFrac(value, right[col]));
+    }
+
+    function entryList(cols) {
+      const numbers = cols.map(col => col + 1);
+      const text = numbers.length === 1
+        ? String(numbers[0])
+        : `${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}`;
+      return `${numbers.length === 1 ? "Entry" : "Entries"} ${text}`;
+    }
+
+    function diagnoseGuidedScaleFactor(factor, pivotValue) {
+      const expected = divFrac(frac(1n), pivotValue);
+      if (equalFrac(factor, pivotValue)) {
+        return `That multiplies the pivot by itself, giving ${rationalText(mulFrac(pivotValue, pivotValue))} rather than 1.`;
+      }
+      if (equalFrac(factor, negFrac(expected))) {
+        return "Check the sign: that factor makes the pivot −1, not 1.";
+      }
+      return null;
+    }
+
+    function diagnoseGuidedReplaceFactor(factor, sourceValue, targetValue) {
+      if (equalFrac(factor, divFrac(targetValue, sourceValue))) {
+        const result = addFrac(mulFrac(factor, sourceValue), targetValue);
+        return `Check the sign: with that factor the entry becomes ${rationalText(result)} instead of 0.`;
+      }
+      if (!isZero(targetValue) && (
+        equalFrac(factor, divFrac(sourceValue, targetValue)) ||
+        equalFrac(factor, negFrac(divFrac(sourceValue, targetValue)))
+      )) {
+        return `It looks like the fraction is upside down. c multiplies the pivot-row entry ${rationalText(sourceValue)}, so c(${rationalText(sourceValue)}) must equal ${rationalText(negFrac(targetValue))}.`;
+      }
+      return null;
+    }
+
+    function diagnosePracticeRow(proposed, expected, wrongCols) {
+      const matrix = currentMatrix();
+      const factor = interaction.factor;
+      const s = interaction.source + 1;
+
+      if (interaction.stage === "practice-scale-row-entry") {
+        const row = matrix[interaction.source];
+        const scaledBy = k => row.map(value => mulFrac(k, value));
+        if (rowsEqual(proposed, scaledBy(divFrac(frac(1n), factor)))) {
+          return `It looks like each entry was divided by ${rationalText(factor)} instead of multiplied by it.`;
+        }
+        if (rowsEqual(proposed, scaledBy(negFrac(factor)))) {
+          return `Check the sign: the row matches ${coefficientText(negFrac(factor), s)}, not ${coefficientText(factor, s)}.`;
+        }
+        if (wrongCols.every(col => equalFrac(proposed[col], row[col]))) {
+          return `${entryList(wrongCols)} still ${wrongCols.length === 1 ? "matches" : "match"} the original row ${s}. Scaling multiplies every entry of the row.`;
+        }
+      } else {
+        const t = interaction.target + 1;
+        const source = matrix[interaction.source];
+        const target = matrix[interaction.target];
+        const combine = (k, multiplied, added) => multiplied.map((value, col) => addFrac(mulFrac(k, value), added[col]));
+        if (rowsEqual(proposed, combine(negFrac(factor), source, target))) {
+          return `Check the sign: the row matches ${coefficientText(negFrac(factor), s)} + R${t}, not ${coefficientText(factor, s)} + R${t}.`;
+        }
+        if (rowsEqual(proposed, combine(factor, target, source))) {
+          return `The row matches ${coefficientText(factor, t)} + R${s}. The multiple belongs on the source row R${s}, and it is added to R${t}.`;
+        }
+        if (rowsEqual(proposed, source.map(value => mulFrac(factor, value)))) {
+          return `The row matches ${coefficientText(factor, s)} alone. Row replacement adds this multiple to the original R${t}.`;
+        }
+        if (wrongCols.every(col => equalFrac(proposed[col], target[col]))) {
+          return `${entryList(wrongCols)} still ${wrongCols.length === 1 ? "matches" : "match"} the original row ${t}. Row replacement changes every entry of the row, not only the one being cleared.`;
+        }
+      }
+
+      if (wrongCols.every(col => !isZero(expected[col]) && equalFrac(proposed[col], negFrac(expected[col])))) {
+        return `${entryList(wrongCols)} ${wrongCols.length === 1 ? "has" : "have"} the right size but the wrong sign.`;
+      }
+      return null;
     }
 
     function firstNonzeroColumn(row) {
@@ -3080,6 +3520,19 @@
       };
     }
 
+    function isUnit(x) { return x.d === 1n && absBigInt(x.n) === 1n; }
+
+    // The position where the forward phase would place its next pivot: the
+    // first row after the established echelon rows, in the first column to
+    // the right of their pivots that has a nonzero entry at or below that row.
+    function nextPivotPosition(matrix, info) {
+      const row = info.protectedPrefix;
+      if (row >= matrix.length) return null;
+      const startCol = row > 0 ? info.pivots[row - 1].col + 1 : 0;
+      const col = findPivotColumn(matrix, row, startCol);
+      return col === null ? null : { row, col };
+    }
+
     function isRref(matrix) {
       return analyzeMatrixStructure(matrix).rref;
     }
@@ -3126,6 +3579,28 @@
           title: "Correct, but it undoes progress",
           message: "The row operation is valid, but it disrupts part of the echelon or reduced structure already established."
         };
+      }
+
+      // Interchanges and replacements that produce a ±1 pivot are good strategy
+      // even though they do not yet clear anything.
+      const nextPivot = nextPivotPosition(before, beforeInfo);
+      if (nextPivot && operation.kind !== "scale") {
+        const { row, col } = nextPivot;
+        if (!isUnit(before[row][col]) && isUnit(after[row][col])) {
+          return {
+            kind: "efficient",
+            title: "Correct and convenient",
+            message: "This puts a 1 or −1 in the next pivot position, which keeps the elimination arithmetic simple."
+          };
+        }
+        const unitInColumn = matrix => matrix.some((values, r) => r >= row && isUnit(values[col]));
+        if (operation.kind === "replace" && !unitInColumn(before) && unitInColumn(after)) {
+          return {
+            kind: "efficient",
+            title: "Correct and convenient",
+            message: "This creates a 1 or −1 in the next pivot column, which can then be moved into the pivot position."
+          };
+        }
       }
 
       if (operation.kind === "scale") {
@@ -3223,7 +3698,7 @@
     }
 
     function undo() {
-      if (historyIndex <= 0) return;
+      if (historyIndex <= historyFloor) return;
       const undone = history[historyIndex];
       historyIndex--;
       interaction = idleInteraction();
@@ -3494,6 +3969,10 @@
 
     function matrixLatex(matrix) {
       const rows = matrix.map(row => row.map(rationalLatex).join(" & ")).join(" \\\\\n");
+      if (augmentedFor(matrix)) {
+        const spec = `${"c".repeat(matrix[0].length - 1)}|c`;
+        return `\\left[\\begin{array}{${spec}}\n${rows}\n\\end{array}\\right]`;
+      }
       return `\\begin{bmatrix}\n${rows}\n\\end{bmatrix}`;
     }
 
@@ -3508,8 +3987,11 @@
       return `\\documentclass[12pt]{article}\n` +
         `\\usepackage{amsmath,amssymb}\n` +
         `\\usepackage[margin=1in]{geometry}\n` +
+        `\\allowdisplaybreaks\n` +
         `\\begin{document}\n` +
-        `\\[\n\\begin{aligned}\n${lines.join(" \\\\\n")}\n\\end{aligned}\n\\]\n` +
+        // align* (unlike aligned inside \[ \]) may break across pages, so long
+        // computations no longer run off the bottom of the first page.
+        `\\begin{align*}\n${lines.join(" \\\\\n")}\n\\end{align*}\n` +
         `\\end{document}\n`;
     }
 
@@ -3589,11 +4071,33 @@
     }
 
     document.addEventListener("keydown", event => {
+      if (modeDialog.open) return;
       if (event.key === "Escape" && performBackAction()) event.preventDefault();
     });
 
-    rowCount.addEventListener("change", () => buildEntryGrid(null, true));
-    colCount.addEventListener("change", () => buildEntryGrid(null, true));
+    modeContinueBtn.addEventListener("click", () => closeModeDialog("continue"));
+    modeRestartBtn.addEventListener("click", () => closeModeDialog("restart"));
+    modeCancelBtn.addEventListener("click", () => closeModeDialog("cancel"));
+    // Escape or any other dismissal counts as Cancel.
+    modeDialog.addEventListener("close", () => { if (pendingModeSwitch) closeModeDialog("cancel"); });
+
+    augmentedToggle.addEventListener("change", () => {
+      buildEntryGrid(currentEntryValues());
+      if (historyIndex >= 0) renderHistory();
+    });
+
+    // Keep whatever overlaps the new size so that adding a column (for example,
+    // an augmented column) does not erase the entries already typed.
+    function currentEntryValues() {
+      const cols = Number(entryMatrix.dataset.cols || 0);
+      const values = [...entryMatrix.querySelectorAll(".matrix-entry")].map(input => input.value);
+      const grid = [];
+      for (let i = 0; cols && i < values.length; i += cols) grid.push(values.slice(i, i + cols));
+      return grid;
+    }
+
+    rowCount.addEventListener("change", () => buildEntryGrid(currentEntryValues(), true));
+    colCount.addEventListener("change", () => buildEntryGrid(currentEntryValues(), true));
 
     function handleModeClick(nextMode, event) {
       switchMode(nextMode);
@@ -3623,6 +4127,7 @@
     });
     const handleViewportChange = () => {
       refreshNumericInputModes();
+      refreshHapticsOption();
       centerEntryMatrix();
       if (mobileLayout() && currentMatrix()) document.body.classList.add("computation-active");
       updateMobileLayoutMetrics();
@@ -3650,16 +4155,327 @@
       sheetObserver.observe(interactionPanel);
     }
 
-    updateModeControls();
-    populateSizeSelectors();
-    buildEntryGrid([
+    // ------------------------------------------------------------------
+    // Welcome tour: a spotlight walkthrough shown on the first visit and
+    // available afterward from the "Take the tour" link.
+    // ------------------------------------------------------------------
+
+    const EXAMPLE_MATRIX = [
       ["1", "2", "-1", "3"],
       ["2", "5", "1", "8"],
       ["-1", "1", "2", "-1"]
-    ]);
+    ];
+    const TOUR_SEEN_KEY = "gaussian-elimination-trainer.tour-seen";
+
+    const tourRoot = document.getElementById("tourRoot");
+    const tourSpotlight = document.getElementById("tourSpotlight");
+    const tourCard = document.getElementById("tourCard");
+    const tourStepCount = document.getElementById("tourStepCount");
+    const tourTitle = document.getElementById("tourTitle");
+    const tourBody = document.getElementById("tourBody");
+    const tourDots = document.getElementById("tourDots");
+    const tourSkipBtn = document.getElementById("tourSkipBtn");
+    const tourBackBtn = document.getElementById("tourBackBtn");
+    const tourNextBtn = document.getElementById("tourNextBtn");
+    const tourBtn = document.getElementById("tourBtn");
+
+    const tourSteps = [
+      {
+        title: "Welcome to Gaussian elimination",
+        body: `<p>Gaussian elimination turns a matrix into <strong>reduced row echelon form</strong> using three simple row operations. Every step keeps the solutions of the underlying system unchanged.</p>`,
+        demo: true,
+        next: "Show me around"
+      },
+      {
+        target: () => entryWrap,
+        title: "Enter a matrix",
+        body: `<p>Type one number per box. Integers, fractions such as <span class="kbd">-7/3</span>, and decimals such as <span class="kbd">1.25</span> all work, and arithmetic is always exact.</p>
+          <p>For a system of equations, put the constants in the last column and tick <strong>Augmented matrix</strong> to draw the bar.</p>`
+      },
+      {
+        target: () => document.querySelector(".setup-toolbar"),
+        title: "…or generate one",
+        body: `<p>Pick a size, then choose a <strong>Problem</strong> type (for example <em>Row interchange required</em> or <em>Fractions likely</em>) and press <strong>Generate problem</strong> for a fresh matrix with a tidy answer.</p>`
+      },
+      {
+        target: () => document.querySelector(".mode-switch"),
+        title: "Choose how much help you want",
+        body: `<ul>
+            <li><strong>Guided:</strong> the trainer walks through the algorithm. You pick each pivot, operation, and factor, and hints get more specific if you are stuck.</li>
+            <li><strong>Practice:</strong> you choose the strategy and compute every new row yourself. The trainer checks your arithmetic and comments on each step.</li>
+            <li><strong>Free:</strong> a row-reduction calculator. You choose operations and the trainer does the arithmetic.</li>
+          </ul>`
+      },
+      {
+        target: () => startBtn,
+        title: "Start the computation",
+        body: `<p>When the matrix is ready, press <strong>Start</strong>. If you switch modes partway through, you can keep going from where you are or start over.</p>`
+      },
+      {
+        target: () => document.querySelector(".operation-toolbar"),
+        title: "The three row operations",
+        body: `<ul>
+            <li><strong>Scale</strong> a row by a nonzero number: <span class="op-notation">cR<sub>i</sub> → R<sub>i</sub></span></li>
+            <li><strong>Interchange</strong> two rows: <span class="op-notation">R<sub>i</sub> ↔ R<sub>j</sub></span></li>
+            <li><strong>Replace</strong> a row by adding a multiple of another: <span class="op-notation">cR<sub>i</sub> + R<sub>j</sub> → R<sub>j</sub></span></li>
+          </ul>
+          <p>Choose an operation, then tap rows in the most recent matrix.</p>`
+      },
+      {
+        target: () => historyScroll,
+        title: "Your work, step by step",
+        body: `<p>Each matrix appears here with the operation that produced it, just as you would write it by hand. <strong>Undo</strong> and <strong>Redo</strong> are always available${mobileLayout() ? "" : ", and <strong>Save LaTeX</strong> or <strong>Save PDF</strong> exports the whole computation"}.</p>`
+      },
+      {
+        title: "Ready to try one?",
+        body: `<p>The guided example starts with a 3×4 matrix, so you can see each stage of the algorithm. You can reopen this tour from <strong>Take the tour</strong> at the top of the page.</p>`,
+        next: "Try a guided example",
+        secondary: "Explore on my own"
+      }
+    ];
+
+    // ½R1 → R1, −R1 + R2 → R2, −2R2 + R1 → R1 reduces this matrix without
+    // introducing fractions.
+    const tourDemoFrames = [
+      { matrix: [[2, 4, 6], [1, 3, 5]], op: "", changed: null, caption: "Start with any matrix…" },
+      { matrix: [[1, 2, 3], [1, 3, 5]], op: "½R<sub>1</sub> → R<sub>1</sub>", changed: 0, caption: "scale a row to make a pivot 1," },
+      { matrix: [[1, 2, 3], [0, 1, 2]], op: "−R<sub>1</sub> + R<sub>2</sub> → R<sub>2</sub>", changed: 1, caption: "clear the entries below it," },
+      { matrix: [[1, 0, -1], [0, 1, 2]], op: "−2R<sub>2</sub> + R<sub>1</sub> → R<sub>1</sub>", changed: 0, caption: "then clear the entries above: reduced row echelon form.", done: true }
+    ];
+
+    let tourIndex = -1;
+    let tourDemoTimer = 0;
+    let tourReturnFocus = null;
+    let tourPositionFrame = 0;
+
+    function markTourSeen() {
+      try { localStorage.setItem(TOUR_SEEN_KEY, "1"); } catch {}
+    }
+
+    function tourAlreadySeen() {
+      try { return localStorage.getItem(TOUR_SEEN_KEY) === "1"; } catch { return false; }
+    }
+
+    function tourOpen() { return tourIndex >= 0; }
+
+    function renderTourDemo(container, frameIndex) {
+      const frame = tourDemoFrames[frameIndex];
+      const demo = container.querySelector(".tour-demo");
+      const caption = container.querySelector(".tour-demo-caption");
+      if (!demo || !caption) return;
+      demo.innerHTML = "";
+      demo.classList.toggle("done", Boolean(frame.done));
+      const relation = document.createElement("div");
+      relation.className = "relation";
+      relation.innerHTML = frame.op
+        ? `<div class="op-label">${frame.op}</div><div class="tilde">∼</div>`
+        : "";
+      const bracket = document.createElement("div");
+      bracket.className = "matrix-bracket";
+      const table = document.createElement("table");
+      table.className = "matrix-table";
+      frame.matrix.forEach((row, rowIndex) => {
+        const tr = document.createElement("tr");
+        if (rowIndex === frame.changed) tr.className = "changed";
+        row.forEach(value => {
+          const td = document.createElement("td");
+          td.textContent = value < 0 ? `−${-value}` : String(value);
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
+      bracket.appendChild(table);
+      demo.append(relation, bracket);
+      caption.textContent = frame.caption;
+    }
+
+    function startTourDemo() {
+      stopTourDemo();
+      let frame = 0;
+      renderTourDemo(tourBody, frame);
+      const advance = () => {
+        frame = (frame + 1) % tourDemoFrames.length;
+        renderTourDemo(tourBody, frame);
+        tourDemoTimer = window.setTimeout(advance, tourDemoFrames[frame].done ? 3400 : 1900);
+      };
+      tourDemoTimer = window.setTimeout(advance, 1600);
+    }
+
+    function stopTourDemo() {
+      window.clearTimeout(tourDemoTimer);
+      tourDemoTimer = 0;
+    }
+
+    function positionTour() {
+      if (!tourOpen()) return;
+      const step = tourSteps[tourIndex];
+      const target = step.target?.();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const cardRect = tourCard.getBoundingClientRect();
+      const margin = 12;
+
+      if (!target || !target.isConnected || target.getClientRects().length === 0) {
+        // Centered steps: shrink the spotlight to nothing so the whole page dims.
+        Object.assign(tourSpotlight.style, { top: `${vh / 2}px`, left: `${vw / 2}px`, width: "0px", height: "0px" });
+        tourCard.style.left = `${Math.max(margin, (vw - cardRect.width) / 2)}px`;
+        tourCard.style.top = `${Math.max(margin, (vh - cardRect.height) / 2)}px`;
+        return;
+      }
+
+      const pad = 8;
+      const rect = target.getBoundingClientRect();
+      const top = Math.max(4, rect.top - pad);
+      const left = Math.max(4, rect.left - pad);
+      const bottom = Math.min(vh - 4, rect.bottom + pad);
+      const right = Math.min(vw - 4, rect.right + pad);
+      Object.assign(tourSpotlight.style, {
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${Math.max(0, right - left)}px`,
+        height: `${Math.max(0, bottom - top)}px`
+      });
+
+      // Prefer below the target, then above, then docked to the bottom edge.
+      let cardTop;
+      if (bottom + margin + cardRect.height <= vh - margin) cardTop = bottom + margin;
+      else if (top - margin - cardRect.height >= margin) cardTop = top - margin - cardRect.height;
+      else cardTop = vh - margin - cardRect.height;
+      const idealLeft = rect.left + rect.width / 2 - cardRect.width / 2;
+      tourCard.style.top = `${Math.max(margin, cardTop)}px`;
+      tourCard.style.left = `${Math.min(Math.max(margin, idealLeft), vw - margin - cardRect.width)}px`;
+    }
+
+    function schedulePositionTour() {
+      cancelAnimationFrame(tourPositionFrame);
+      tourPositionFrame = requestAnimationFrame(positionTour);
+    }
+
+    function scrollTourTargetIntoView(target) {
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      // Leave room for the card: aim the target at the upper part of the screen.
+      const desiredTop = Math.min(96, window.innerHeight * 0.14);
+      const fits = rect.top >= 8 && rect.bottom <= window.innerHeight * 0.55;
+      if (!fits) window.scrollBy({ top: rect.top - desiredTop, behavior: "auto" });
+    }
+
+    function showTourStep(index) {
+      tourIndex = Math.max(0, Math.min(index, tourSteps.length - 1));
+      const step = tourSteps[tourIndex];
+      const last = tourIndex === tourSteps.length - 1;
+
+      tourStepCount.textContent = `Step ${tourIndex + 1} of ${tourSteps.length}`;
+      tourTitle.textContent = step.title;
+      tourBody.innerHTML = step.body;
+      if (step.demo) {
+        tourBody.insertAdjacentHTML("beforeend", `<div class="tour-demo" aria-hidden="true"></div><p class="tour-demo-caption" aria-hidden="true"></p>`);
+        startTourDemo();
+      } else {
+        stopTourDemo();
+      }
+
+      tourDots.innerHTML = "";
+      tourSteps.forEach((_, i) => {
+        const dot = document.createElement("span");
+        dot.className = `tour-dot${i === tourIndex ? " active" : ""}`;
+        tourDots.appendChild(dot);
+      });
+
+      tourBackBtn.hidden = tourIndex === 0 || last;
+      tourSkipBtn.textContent = step.secondary || "Skip tour";
+      tourNextBtn.textContent = step.next || (last ? "Done" : "Next");
+
+      scrollTourTargetIntoView(step.target?.());
+      positionTour();
+      // Measure again once the new content has laid out.
+      schedulePositionTour();
+      tourNextBtn.focus({ preventScroll: true });
+    }
+
+    function openTour() {
+      if (tourOpen()) return;
+      hideNumericKeypad();
+      if (interaction.stage !== "idle") cancelInteraction();
+      tourReturnFocus = document.activeElement;
+      tourRoot.hidden = false;
+      document.body.classList.add("tour-active");
+      showTourStep(0);
+    }
+
+    function closeTour({ startExample = false } = {}) {
+      if (!tourOpen()) return;
+      stopTourDemo();
+      tourIndex = -1;
+      tourRoot.hidden = true;
+      document.body.classList.remove("tour-active");
+      markTourSeen();
+      if (startExample) {
+        rowCount.value = String(EXAMPLE_MATRIX.length);
+        colCount.value = String(EXAMPLE_MATRIX[0].length);
+        buildEntryGrid(EXAMPLE_MATRIX);
+        switchMode("guided");
+        startComputation();
+        if (!mobileLayout()) workPanel.scrollIntoView({ block: "start", behavior: "smooth" });
+        return;
+      }
+      if (tourReturnFocus?.isConnected) tourReturnFocus.focus({ preventScroll: true });
+    }
+
+    tourNextBtn.addEventListener("click", () => {
+      if (tourIndex === tourSteps.length - 1) closeTour({ startExample: true });
+      else showTourStep(tourIndex + 1);
+    });
+    tourBackBtn.addEventListener("click", () => showTourStep(tourIndex - 1));
+    tourSkipBtn.addEventListener("click", () => closeTour());
+    tourBtn.addEventListener("click", openTour);
+
+    // Capture phase, so Escape closes the tour without also triggering the
+    // workspace's own Escape (Back) handling underneath it.
+    window.addEventListener("keydown", event => {
+      if (!tourOpen()) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeTour();
+      } else if (event.key === "ArrowRight" && tourIndex < tourSteps.length - 1) {
+        event.preventDefault();
+        showTourStep(tourIndex + 1);
+      } else if (event.key === "ArrowLeft" && tourIndex > 0) {
+        event.preventDefault();
+        showTourStep(tourIndex - 1);
+      } else if (event.key === "Tab") {
+        // Keep keyboard focus inside the dialog.
+        const focusable = [...tourCard.querySelectorAll("button")].filter(button => !button.hidden);
+        const first = focusable[0];
+        const lastButton = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          lastButton.focus();
+        } else if (!event.shiftKey && document.activeElement === lastButton) {
+          event.preventDefault();
+          first.focus();
+        } else if (!tourCard.contains(document.activeElement)) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    }, true);
+
+    window.addEventListener("resize", schedulePositionTour);
+    window.addEventListener("scroll", schedulePositionTour, { passive: true, capture: true });
+
+    updateModeControls();
+    refreshHapticsOption();
+    populateSizeSelectors();
+    buildEntryGrid(EXAMPLE_MATRIX);
     renderHistory();
     refreshNumericInputModes();
     updateMobileLayoutMetrics();
+
+    if (!window.__disableWelcomeTour && !tourAlreadySeen()) {
+      window.setTimeout(openTour, 350);
+    }
 
   </script>
 </body>
