@@ -21,7 +21,7 @@ The script defaults to `index.html` and `ui_test_report`, so the same suite can 
 python tests/ui_tests.py
 ```
 
-If Chromium is not available at the default path, set `CHROMIUM_PATH` to the browser executable before running the suite.
+The suite uses `CHROMIUM_PATH` if it is set, then `/usr/bin/chromium` if it exists, and otherwise the Chromium installed by `python -m playwright install chromium`.
 
 The default suite covers:
 

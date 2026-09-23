@@ -1628,13 +1628,14 @@
       if (fractionMatch) return frac(BigInt(fractionMatch[1]), BigInt(fractionMatch[2]));
       if (/^[+-]?\d+$/.test(text)) return frac(BigInt(text));
 
-      const decimalMatch = text.match(/^([+-]?)(\d*)\.(\d+)$/);
-      if (decimalMatch && decimalMatch[2] !== "") {
+      // Accepts 1.25, .5, -.5, and 3. (at least one digit on either side).
+      const decimalMatch = text.match(/^([+-]?)(\d*)\.(\d*)$/);
+      if (decimalMatch && (decimalMatch[2] !== "" || decimalMatch[3] !== "")) {
         const sign = decimalMatch[1] === "-" ? -1n : 1n;
         const whole = decimalMatch[2] === "" ? "0" : decimalMatch[2];
         const digits = decimalMatch[3];
         const denominator = 10n ** BigInt(digits.length);
-        const numerator = BigInt(whole) * denominator + BigInt(digits);
+        const numerator = BigInt(whole) * denominator + BigInt(digits || "0");
         return frac(sign * numerator, denominator);
       }
 
@@ -2487,7 +2488,7 @@
           if (rowIndex === interaction.source) {
             haptic("error");
             shake();
-            setPrompt("Choose a different second row.", '<span class="kbd">Esc</span> cancels.', true);
+            setPrompt("Choose a different second row.", `${customKeypadPreferred() ? "<strong>Back</strong>" : '<span class="kbd">Esc</span>'} cancels.`, true);
             return;
           }
           applyScalingOrSwap("swap", interaction.source, null, rowIndex);
@@ -3508,8 +3509,11 @@
       return `\\documentclass[12pt]{article}\n` +
         `\\usepackage{amsmath,amssymb}\n` +
         `\\usepackage[margin=1in]{geometry}\n` +
+        `\\allowdisplaybreaks\n` +
         `\\begin{document}\n` +
-        `\\[\n\\begin{aligned}\n${lines.join(" \\\\\n")}\n\\end{aligned}\n\\]\n` +
+        // align* (unlike aligned inside \[ \]) may break across pages, so long
+        // computations no longer run off the bottom of the first page.
+        `\\begin{align*}\n${lines.join(" \\\\\n")}\n\\end{align*}\n` +
         `\\end{document}\n`;
     }
 
@@ -3592,8 +3596,18 @@
       if (event.key === "Escape" && performBackAction()) event.preventDefault();
     });
 
-    rowCount.addEventListener("change", () => buildEntryGrid(null, true));
-    colCount.addEventListener("change", () => buildEntryGrid(null, true));
+    // Keep whatever overlaps the new size so that adding a column (for example,
+    // an augmented column) does not erase the entries already typed.
+    function currentEntryValues() {
+      const cols = Number(entryMatrix.style.gridTemplateColumns.match(/repeat\((\d+)/)?.[1] || 0);
+      const values = [...entryMatrix.querySelectorAll(".matrix-entry")].map(input => input.value);
+      const grid = [];
+      for (let i = 0; cols && i < values.length; i += cols) grid.push(values.slice(i, i + cols));
+      return grid;
+    }
+
+    rowCount.addEventListener("change", () => buildEntryGrid(currentEntryValues(), true));
+    colCount.addEventListener("change", () => buildEntryGrid(currentEntryValues(), true));
 
     function handleModeClick(nextMode, event) {
       switchMode(nextMode);
